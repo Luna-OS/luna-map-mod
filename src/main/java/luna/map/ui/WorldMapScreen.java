@@ -71,6 +71,8 @@ public class WorldMapScreen extends Screen {
 		frame++;
 		MapStore store = MapSession.viewStore();
 		if (store != null) {
+			// alles Kartige nur zwischen Kopf- und Fusszeile (sonst ragen z. B. Spielernamen hinein)
+			graphics.enableScissor(0, 16, width, height - 28);
 			drawRegions(graphics, store);
 			for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
 				int sx = screenX(waypoint.x + 0.5);
@@ -81,10 +83,28 @@ public class WorldMapScreen extends Screen {
 				}
 			}
 			LocalPlayer player = minecraft.player;
+			if (player != null && luna.map.LunaConfig.get().radar && minecraft.level != null) {
+				for (RadarIcons.Kind kind : RadarIcons.Kind.values()) {
+					for (net.minecraft.world.entity.Entity entity : minecraft.level.entitiesForRendering()) {
+						if (entity == player || RadarIcons.kind(entity) != kind) {
+							continue;
+						}
+						double ex = screenXd(entity.getX());
+						double ez = screenYd(entity.getZ());
+						double dy = entity.getY() - player.getY();
+						if (kind == RadarIcons.Kind.PLAYER && RadarIcons.drawHead(graphics, entity, ex, ez, dy, 10)) {
+							graphics.centeredText(font, entity.getName(), (int) Math.round(ex), (int) Math.round(ez) + 8, LunaColors.WHITE);
+						} else {
+							RadarIcons.draw(graphics, kind, ex, ez, dy);
+						}
+					}
+				}
+			}
 			if (player != null) {
 				MapDraw.arrow(graphics, (float) (width / 2.0 + (player.getX() - centerX) * scale),
 						(float) (height / 2.0 + (player.getZ() - centerZ) * scale), player.getYRot(), 14);
 			}
+			graphics.disableScissor();
 		}
 
 		graphics.fill(0, 0, width, 16, 0xCC110D28);
