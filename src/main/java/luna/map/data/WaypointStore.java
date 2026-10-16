@@ -41,6 +41,9 @@ public final class WaypointStore {
 
 	public List<Waypoint> in(String dimension) {
 		List<Waypoint> result = new ArrayList<>();
+		if (dimension == null) {
+			return result;
+		}
 		for (Waypoint waypoint : waypoints) {
 			if (dimension.equals(waypoint.dimension)) {
 				result.add(waypoint);

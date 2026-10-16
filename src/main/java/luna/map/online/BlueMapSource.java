@@ -34,6 +34,7 @@ public final class BlueMapSource {
 	private static final Map<Long, Long> FETCHED = new HashMap<>();
 
 	private static String linkWorld;
+	private static String fetchedDimension;
 	private static BlueMapLink link;
 	private static volatile String lastError;
 
@@ -90,6 +91,12 @@ public final class BlueMapSource {
 		String mapId = current.maps.get(dimension);
 		if (mapId == null) {
 			return;
+		}
+		// geladene Kacheln gelten nur fuer die Dimension, fuer die sie geholt wurden
+		String fetchKey = dimension + "|" + mapId;
+		if (!fetchKey.equals(fetchedDimension)) {
+			fetchedDimension = fetchKey;
+			FETCHED.clear();
 		}
 		int tileSize = current.tileSizes.getOrDefault(mapId, 500);
 		long now = System.currentTimeMillis();

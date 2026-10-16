@@ -61,8 +61,17 @@ public class LunaScreen extends Screen {
 				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(right, top + 100, 150, 20).build());
 		xaero.active = MapSession.world() != null;
 		online.active = MapSession.world() != null;
+		Button reset = addRenderableWidget(Button.builder(Component.translatable("lunamap.reset.button"),
+				b -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.ConfirmScreen(yes -> {
+					if (yes) {
+						MapSession.resetDimension(minecraft);
+					}
+					minecraft.setScreenAndShow(this);
+				}, Component.translatable("lunamap.reset.title", String.valueOf(MapSession.dimension())),
+						Component.translatable("lunamap.reset.message")))).bounds(left, top + 124, 150, 20).build());
+		reset.active = MapSession.store() != null;
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-				.bounds(width / 2 - 100, top + 128, 200, 20).build());
+				.bounds(right, top + 124, 150, 20).build());
 	}
 
 	@Override
@@ -81,7 +90,7 @@ public class LunaScreen extends Screen {
 				axoW, axoH, AXO_W, AXO_H, AXO_W, AXO_H);
 		graphics.centeredText(font, Component.literal(title.getString() + " " + Updater.currentVersion()), width / 2, axoY - 12, LunaColors.MOON);
 		graphics.centeredText(font, ShaderStatus.describe(), width / 2, top - 14, LunaColors.LAVENDER);
-		graphics.centeredText(font, Component.translatable("lunamap.keys_hint"), width / 2, top + 152, 0xAAA896E8);
+		graphics.centeredText(font, Component.translatable("lunamap.keys_hint"), width / 2, top + 150, 0xAAA896E8);
 		Component update = Updater.statusText();
 		if (update != null) {
 			graphics.centeredText(font, update, width / 2, top + 164, LunaColors.PINK);
