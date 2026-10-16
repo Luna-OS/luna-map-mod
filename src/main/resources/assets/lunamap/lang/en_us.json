@@ -1,0 +1,12 @@
+{
+  "lunamap.title": "Luna Map",
+  "lunamap.button.minimap": "Minimap Settings",
+  "lunamap.button.worldmap": "World Map Settings",
+  "lunamap.shaders.no_iris": "Shaders: Iris not installed",
+  "lunamap.shaders.inactive": "Shaders: Iris %s, no shader pack active",
+  "lunamap.shaders.active": "Shaders: Iris %s with shader pack – maps work normally",
+  "lunamap.pack.luna_theme": "Luna Map Theme",
+  "lunamap.link.minimap": "Xaero's Minimap",
+  "lunamap.link.worldmap": "Xaero's World Map",
+  "modmenu.descriptionTranslation.lunamap": "Luna look for Xaero's Minimap and Xaero's World Map: axolotl logo, night theme and one shared settings screen for both maps."
+}
