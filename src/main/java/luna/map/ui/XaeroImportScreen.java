@@ -80,11 +80,15 @@ public class XaeroImportScreen extends Screen {
 	}
 
 	private static Component statusText() {
-		String[] parts = XaeroImporter.status().split(":", 3);
+		String status = XaeroImporter.status();
+		if (status.startsWith("error:")) {
+			// Fehlermeldungen koennen selbst ":" enthalten
+			return Component.translatable("lunamap.import.error", status.substring("error:".length()));
+		}
+		String[] parts = status.split(":", 3);
 		return switch (parts[0]) {
 			case "running" -> Component.translatable("lunamap.import.running", parts[1], parts[2]);
 			case "done" -> Component.translatable("lunamap.import.done", parts[1], parts[2]);
-			case "error" -> Component.translatable("lunamap.import.error", parts.length > 1 ? parts[1] : "?");
 			default -> Component.empty();
 		};
 	}

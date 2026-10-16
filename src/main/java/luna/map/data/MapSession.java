@@ -18,6 +18,10 @@ public final class MapSession {
 	private static String world;
 	private static String dimension;
 	private static MapStore store;
+	/** Hoehlenkarte des aktuellen 16er-Hoehenbands, solange der Spieler unter der Erde ist. */
+	private static MapStore caveStore;
+	private static int caveBand = Integer.MIN_VALUE;
+	private static boolean underground;
 	private static WaypointStore waypoints;
 	private static final ChunkScanner SCANNER = new ChunkScanner();
 	private static int saveTimer;
@@ -29,6 +33,15 @@ public final class MapSession {
 	/** Karte der aktuellen Dimension, oder null ausserhalb einer Welt. */
 	public static MapStore store() {
 		return store;
+	}
+
+	/** Was Minimap und Weltkarte zeigen: unter der Erde die Hoehlenkarte, sonst die Oberflaeche. */
+	public static MapStore viewStore() {
+		return underground && caveStore != null ? caveStore : store;
+	}
+
+	public static boolean underground() {
+		return underground && caveStore != null;
 	}
 
 	public static WaypointStore waypoints() {
@@ -94,6 +107,7 @@ public final class MapSession {
 			if (store != null) {
 				store.close();
 			}
+			closeCaves();
 			dimension = newDimension;
 			store = new MapStore(dimensionFolder(newDimension), textureOwner(newDimension));
 			// Chunks, die schon vor dem Start der Karte geladen wurden, auch einlesen
@@ -111,12 +125,58 @@ public final class MapSession {
 				}
 			}
 		}
-		SCANNER.tick(level, mc.player, store);
+		updateUnderground(level, mc);
+		int caveRadius = luna.map.LunaConfig.get().zoom.radius / 16 + 1;
+		SCANNER.tick(level, mc.player, store, underground ? caveStore : null, caveRadius);
 		store.tick(20 * 60);
+		if (caveStore != null) {
+			caveStore.tick(20 * 60);
+		}
 		if (++saveTimer >= SAVE_INTERVAL) {
 			saveTimer = 0;
 			store.save();
+			if (caveStore != null) {
+				caveStore.save();
+			}
 		}
+	}
+
+	/** Unter der Erde (kein Himmel ueber dem Kopf) wechselt die Karte in den Hoehlenmodus. */
+	private static void updateUnderground(ClientLevel level, Minecraft mc) {
+		if (level.dimensionType().hasCeiling() || !luna.map.LunaConfig.get().caveMode) {
+			underground = false;
+			return;
+		}
+		int px = mc.player.getBlockX();
+		int py = mc.player.getBlockY();
+		int pz = mc.player.getBlockZ();
+		net.minecraft.world.level.chunk.LevelChunk chunk = ChunkScanner.loadedChunk(level, px >> 4, pz >> 4);
+		if (chunk == null) {
+			return;
+		}
+		int surface = chunk.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, px & 15, pz & 15);
+		// etwas Abstand beim Wechsel, damit es an Hoehleneingaengen nicht flackert
+		boolean now = underground ? py < surface - 2 : py < surface - 5;
+		if (now) {
+			int band = Math.floorDiv(py, 16);
+			if (band != caveBand || caveStore == null) {
+				closeCaves();
+				caveBand = band;
+				String folder = "caves/" + band;
+				caveStore = new MapStore(dimensionFolder(dimension).resolve(folder), textureOwner(dimension) + "/caves_" + (band < 0 ? "m" + -band : band));
+				SCANNER.clearCaves();
+			}
+		}
+		underground = now;
+	}
+
+	private static void closeCaves() {
+		if (caveStore != null) {
+			caveStore.close();
+			caveStore = null;
+		}
+		caveBand = Integer.MIN_VALUE;
+		underground = false;
 	}
 
 	public static void leave() {
@@ -124,6 +184,7 @@ public final class MapSession {
 			store.close();
 			store = null;
 		}
+		closeCaves();
 		if (waypoints != null) {
 			waypoints.save();
 			waypoints = null;

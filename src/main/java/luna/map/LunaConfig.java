@@ -15,16 +15,6 @@ import net.fabricmc.loader.api.FabricLoader;
 
 /** Einstellungen, gespeichert in config/lunamap.json. */
 public class LunaConfig {
-	public enum Size {
-		SMALL(64), MEDIUM(96), LARGE(128);
-
-		public final int pixels;
-
-		Size(int pixels) {
-			this.pixels = pixels;
-		}
-	}
-
 	public enum Zoom {
 		NEAR(32), MEDIUM(64), FAR(128);
 
@@ -36,19 +26,24 @@ public class LunaConfig {
 		}
 	}
 
-	public enum Corner {
-		TOP_LEFT, TOP_RIGHT
-	}
+	public static final int MIN_SIZE = 48;
+	public static final int MAX_SIZE = 256;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static LunaConfig instance;
 
 	public boolean minimap = true;
-	public Size size = Size.MEDIUM;
+	/** Kantenlaenge der Minimap in GUI-Pixeln. */
+	public int mapSize = 96;
+	/** Position als Anteil des freien Platzes: 0 = links/oben, 1 = rechts/unten. */
+	public double posX = 1;
+	public double posY = 0;
 	public Zoom zoom = Zoom.MEDIUM;
 	public boolean coordinates = true;
 	public boolean worldWaypoints = true;
-	public Corner corner = Corner.TOP_RIGHT;
+	public boolean caveMode = true;
+	public boolean radar = true;
+	public boolean autoUpdate = true;
 
 	public static LunaConfig get() {
 		if (instance == null) {
@@ -67,15 +62,12 @@ public class LunaConfig {
 			try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
 				LunaConfig config = GSON.fromJson(reader, LunaConfig.class);
 				if (config != null) {
-					if (config.size == null) {
-						config.size = Size.MEDIUM;
-					}
 					if (config.zoom == null) {
 						config.zoom = Zoom.MEDIUM;
 					}
-					if (config.corner == null) {
-						config.corner = Corner.TOP_RIGHT;
-					}
+					config.mapSize = Math.max(MIN_SIZE, Math.min(MAX_SIZE, config.mapSize));
+					config.posX = Math.max(0, Math.min(1, config.posX));
+					config.posY = Math.max(0, Math.min(1, config.posY));
 					return config;
 				}
 			} catch (IOException | JsonParseException e) {

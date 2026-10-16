@@ -51,11 +51,11 @@ public final class WorldWaypointHud implements HudElement {
 				continue;
 			}
 			int distance = (int) Math.round(Math.sqrt(delta.lengthSquared()));
-			MapDraw.waypoint(graphics, mc.font, waypoint, sx, sy);
+			MapDraw.waypoint(graphics, waypoint, sx, sy, 3);
 			String label = waypoint.name + " (" + distance + " m)";
 			int w = mc.font.width(label);
-			graphics.fill(sx - w / 2 - 2, sy + 7, sx + w / 2 + 2, sy + 18, 0x99110D28);
-			graphics.centeredText(mc.font, label, sx, sy + 9, LunaColors.WHITE);
+			graphics.fill(sx - w / 2 - 2, sy + 6, sx + w / 2 + 2, sy + 17, 0x99110D28);
+			graphics.centeredText(mc.font, label, sx, sy + 8, LunaColors.WHITE);
 		}
 	}
 }

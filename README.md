@@ -9,18 +9,21 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 
 | | |
 |---|---|
-| **Minimap** | oben rechts (oder links), Norden oben, Pfeil dreht sich mit, Koordinaten, Größe & Zoom einstellbar |
+| **Minimap** | Norden oben, Pfeil dreht sich mit, Koordinaten; per **Drag & Drop** verschieben und in der Größe ändern (Einstellungen → *Minimap verschieben…*) |
+| **Höhlen** | unter der Erde schaltet die Karte automatisch auf die Höhlenansicht um (pro 16er-Höhenband gespeichert) |
+| **Radar** | Items = roter Punkt, Mobs = gelber Punkt, andere Spieler = weißer Punkt |
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
-| **Wegpunkte** (`B`) | Name, Farbe, Koordinaten; werden in der Welt, auf Minimap und Weltkarte angezeigt |
+| **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte |
 | **Xaero-Import** | übernimmt Karten **und** Wegpunkte aus `.minecraft/xaero` – du musst nicht neu erkunden |
 | **BlueMap** | Link des Servers einfügen → Luna Map lädt die aktuelle Karte vom Server (gilt nur für diesen Server) |
 | **Shader** | getestet mit Iris + Complementary Reimagined / MakeUp; alles wird als HUD gezeichnet, keine Mixins |
+| **Auto-Update** | prüft beim Start die [Releases](https://github.com/Luna-OS/luna-map-mod/releases), lädt eine neuere Version herunter und tauscht sie beim Beenden von Minecraft aus (abschaltbar) |
 
 `N` schaltet die Minimap an/aus. Alle Tasten lassen sich unter *Optionen → Steuerung → Luna Map* ändern.
 
 ## Installation
 
-1. [`dist/luna-map-2.0.0+26.3.jar`](dist/luna-map-2.0.0+26.3.jar) (oder aus den [Releases](https://github.com/Luna-OS/luna-map-mod/releases)) in den `mods`-Ordner.
+1. [`dist/luna-map-2.1.0+26.3.jar`](dist/luna-map-2.1.0+26.3.jar) (oder aus den [Releases](https://github.com/Luna-OS/luna-map-mod/releases)) in den `mods`-Ordner.
 2. Braucht nur **Fabric API**. **Mod Menu** ist optional (Einstellungen auch über die Weltkarte → *Einstellungen*).
 3. **Xaero's Minimap und Xaero's World Map rauswerfen** (und die alte `luna-map-1.0.0+26.3.jar`) – sonst gibt es
    doppelte Karten und doppelte Tasten. Deine Xaero-Daten bleiben im Ordner `xaero` liegen und können importiert werden.

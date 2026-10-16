@@ -16,11 +16,20 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 
-/** Die Minimap oben links: Norden ist oben, der Pfeil dreht sich mit dem Spieler. */
+/** Die Minimap: Norden oben, Pfeil dreht sich mit dem Spieler, Position und Groesse frei waehlbar. */
 public final class MinimapHud implements HudElement {
+	public static final MinimapHud INSTANCE = new MinimapHud();
+
 	private static final Identifier TEXTURE = LunaMap.id("minimap");
-	private static final int MARGIN = 6;
+	static final int MARGIN = 9;
+	private static final int ITEM = 0xFFFF5555;
+	private static final int MOB = 0xFFFFE04A;
+	private static final int PLAYER = 0xFFFFFFFF;
 
 	private DynamicTexture texture;
 	private int textureSize;
@@ -29,48 +38,99 @@ public final class MinimapHud implements HudElement {
 	private int lastVersion = -1;
 	private MapStore lastStore;
 
+	private MinimapHud() {
+	}
+
+	/** Linke obere Ecke der Karte (ohne Rahmen) fuer die aktuelle Fenstergroesse. */
+	static int[] position(Minecraft mc, LunaConfig config, LocalPlayer player) {
+		int size = config.mapSize;
+		int width = mc.getWindow().getGuiScaledWidth();
+		int height = mc.getWindow().getGuiScaledHeight();
+		int x = MARGIN + (int) Math.round(config.posX * Math.max(0, width - size - 2 * MARGIN));
+		int y = MARGIN + (int) Math.round(config.posY * Math.max(0, height - size - 2 * MARGIN - 12));
+		// oben rechts zeichnet Minecraft die Effekt-Symbole: Platz lassen
+		if (player != null && config.posY < 0.05 && config.posX > 0.6) {
+			y += effectRows(player) * 26;
+		}
+		return new int[] {x, y};
+	}
+
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft mc = Minecraft.getInstance();
+		if (!LunaConfig.get().minimap || mc.gui.screen() instanceof MinimapEditScreen) {
+			return;
+		}
+		draw(graphics);
+	}
+
+	void draw(GuiGraphicsExtractor graphics) {
+		Minecraft mc = Minecraft.getInstance();
 		LunaConfig config = LunaConfig.get();
-		MapStore store = MapSession.store();
+		MapStore store = MapSession.viewStore();
 		LocalPlayer player = mc.player;
-		if (!config.minimap || store == null || player == null) {
+		if (store == null || player == null) {
 			return;
 		}
 		int radius = config.zoom.radius;
-		int size = config.size.pixels;
+		int size = config.mapSize;
 		int px = player.getBlockX();
 		int pz = player.getBlockZ();
 		updateTexture(store, radius, px, pz);
 
-		int x0 = MARGIN + 3;
-		int y0 = MARGIN + 3;
-		if (config.corner == LunaConfig.Corner.TOP_RIGHT) {
-			x0 = mc.getWindow().getGuiScaledWidth() - MARGIN - 3 - size;
-			y0 += effectRows(player) * 26;
-		}
+		int[] pos = position(mc, config, player);
+		int x0 = pos[0];
+		int y0 = pos[1];
 		MapDraw.frame(graphics, x0, y0, x0 + size, y0 + size);
-		graphics.fill(x0, y0, x0 + size, y0 + size, LunaColors.NIGHT_2);
+		graphics.fill(x0, y0, x0 + size, y0 + size, MapSession.underground() ? 0xFF0B0819 : LunaColors.NIGHT_2);
 		graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, x0, y0, 0, 0, size, size,
 				textureSize, textureSize, textureSize, textureSize);
 
 		float scale = size / (float) textureSize;
+		double fx = player.getX() - (px - radius);
+		double fz = player.getZ() - (pz - radius);
 		graphics.enableScissor(x0, y0, x0 + size, y0 + size);
+		if (config.radar && mc.level != null) {
+			for (Entity entity : mc.level.entitiesForRendering()) {
+				if (entity == player) {
+					continue;
+				}
+				int color;
+				if (entity instanceof ItemEntity) {
+					color = ITEM;
+				} else if (entity instanceof Player) {
+					color = PLAYER;
+				} else if (entity instanceof LivingEntity) {
+					color = MOB;
+				} else {
+					continue;
+				}
+				double ex = entity.getX() - (px - radius);
+				double ez = entity.getZ() - (pz - radius);
+				if (ex < 0 || ez < 0 || ex >= textureSize || ez >= textureSize) {
+					continue;
+				}
+				int sx = x0 + (int) (ex * scale);
+				int sy = y0 + (int) (ez * scale);
+				MapDraw.dot(graphics, sx, sy, color == PLAYER ? 2 : 1, color);
+			}
+		}
 		for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
 			float wx = (waypoint.x - (px - radius) + 0.5f) * scale;
 			float wz = (waypoint.z - (pz - radius) + 0.5f) * scale;
-			int cx = Math.round(Math.max(4, Math.min(size - 4, wx)));
-			int cz = Math.round(Math.max(4, Math.min(size - 4, wz)));
-			MapDraw.waypoint(graphics, mc.font, waypoint, x0 + cx, y0 + cz);
+			boolean inside = wx >= 0 && wz >= 0 && wx < size && wz < size;
+			// ausserhalb: kleiner Punkt am Rand in Richtung des Wegpunkts
+			int cx = Math.round(Math.max(3, Math.min(size - 3, wx)));
+			int cz = Math.round(Math.max(3, Math.min(size - 3, wz)));
+			MapDraw.waypoint(graphics, waypoint, x0 + cx, y0 + cz, inside ? 3 : 2);
 		}
 		graphics.disableScissor();
 
-		double fx = player.getX() - Math.floor(player.getX());
-		double fz = player.getZ() - Math.floor(player.getZ());
-		MapDraw.arrow(graphics, x0 + (float) ((radius + fx) * scale), y0 + (float) ((radius + fz) * scale),
-				player.getYRot(), 12);
+		MapDraw.arrow(graphics, x0 + (float) (fx * scale), y0 + (float) (fz * scale), player.getYRot(), 12);
 		graphics.centeredText(mc.font, "N", x0 + size / 2, y0 + 2, LunaColors.MOON);
+		if (MapSession.underground()) {
+			graphics.text(mc.font, "⛏", x0 + 2, y0 + 2, LunaColors.LAVENDER);
+		}
 
 		if (config.coordinates) {
 			String coords = px + ", " + player.getBlockY() + ", " + pz;

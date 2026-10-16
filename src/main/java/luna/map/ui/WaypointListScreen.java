@@ -85,7 +85,7 @@ public class WaypointListScreen extends Screen {
 			}
 			Waypoint waypoint = list.get(index);
 			int rowY = 40 + i * 26;
-			MapDraw.waypoint(graphics, font, waypoint, width / 2 - 122, rowY + 10);
+			MapDraw.waypoint(graphics, waypoint, width / 2 - 122, rowY + 10, 4);
 			graphics.text(font, waypoint.name, width / 2 - 110, rowY + 2, LunaColors.WHITE);
 			graphics.text(font, waypoint.x + ", " + waypoint.y + ", " + waypoint.z, width / 2 - 110, rowY + 11, LunaColors.LAVENDER);
 		}

@@ -3,6 +3,8 @@ package luna.map.ui;
 import luna.map.LunaColors;
 import luna.map.LunaConfig;
 import luna.map.LunaMap;
+import luna.map.data.MapSession;
+import luna.map.update.Updater;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
@@ -25,42 +27,42 @@ public class LunaScreen extends Screen {
 		this.parent = parent;
 	}
 
+	private int top() {
+		return height / 2 - 52;
+	}
+
 	@Override
 	protected void init() {
 		LunaConfig config = LunaConfig.get();
 		int left = width / 2 - 155;
 		int right = width / 2 + 5;
-		int top = height / 2 - 40;
+		int top = top();
 
 		addRenderableWidget(CycleButton.onOffBuilder(config.minimap)
-				.create(left, top, 150, 20, Component.translatable("lunamap.option.minimap"),
-						(b, v) -> config.minimap = v));
-		addRenderableWidget(CycleButton.onOffBuilder(config.coordinates)
-				.create(right, top, 150, 20, Component.translatable("lunamap.option.coordinates"),
-						(b, v) -> config.coordinates = v));
-		addRenderableWidget(CycleButton.builder((LunaConfig.Size s) -> Component.translatable("lunamap.size." + s.name().toLowerCase()), config.size)
-				.withValues(LunaConfig.Size.values())
-				.create(left, top + 24, 150, 20, Component.translatable("lunamap.option.size"),
-						(b, v) -> config.size = v));
+				.create(left, top, 150, 20, Component.translatable("lunamap.option.minimap"), (b, v) -> config.minimap = v));
+		addRenderableWidget(Button.builder(Component.translatable("lunamap.edit.button"),
+				b -> minecraft.setScreenAndShow(new MinimapEditScreen(this))).bounds(right, top, 150, 20).build());
 		addRenderableWidget(CycleButton.builder((LunaConfig.Zoom z) -> Component.translatable("lunamap.zoom." + z.name().toLowerCase()), config.zoom)
 				.withValues(LunaConfig.Zoom.values())
-				.create(right, top + 24, 150, 20, Component.translatable("lunamap.option.zoom"),
-						(b, v) -> config.zoom = v));
-		addRenderableWidget(CycleButton.builder((LunaConfig.Corner c) -> Component.translatable("lunamap.corner." + c.name().toLowerCase()), config.corner)
-				.withValues(LunaConfig.Corner.values())
-				.create(left, top + 48, 150, 20, Component.translatable("lunamap.option.corner"),
-						(b, v) -> config.corner = v));
+				.create(left, top + 24, 150, 20, Component.translatable("lunamap.option.zoom"), (b, v) -> config.zoom = v));
+		addRenderableWidget(CycleButton.onOffBuilder(config.coordinates)
+				.create(right, top + 24, 150, 20, Component.translatable("lunamap.option.coordinates"), (b, v) -> config.coordinates = v));
+		addRenderableWidget(CycleButton.onOffBuilder(config.caveMode)
+				.create(left, top + 48, 150, 20, Component.translatable("lunamap.option.caves"), (b, v) -> config.caveMode = v));
+		addRenderableWidget(CycleButton.onOffBuilder(config.radar)
+				.create(right, top + 48, 150, 20, Component.translatable("lunamap.option.radar"), (b, v) -> config.radar = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.worldWaypoints)
-				.create(right, top + 48, 150, 20, Component.translatable("lunamap.option.world_waypoints"),
-						(b, v) -> config.worldWaypoints = v));
+				.create(left, top + 72, 150, 20, Component.translatable("lunamap.option.world_waypoints"), (b, v) -> config.worldWaypoints = v));
+		addRenderableWidget(CycleButton.onOffBuilder(config.autoUpdate)
+				.create(right, top + 72, 150, 20, Component.translatable("lunamap.option.auto_update"), (b, v) -> config.autoUpdate = v));
 		Button xaero = addRenderableWidget(Button.builder(Component.translatable("lunamap.import.button"),
-				b -> minecraft.setScreenAndShow(new XaeroImportScreen(this))).bounds(left, top + 76, 150, 20).build());
+				b -> minecraft.setScreenAndShow(new XaeroImportScreen(this))).bounds(left, top + 100, 150, 20).build());
 		Button online = addRenderableWidget(Button.builder(Component.translatable("lunamap.online.button"),
-				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(right, top + 76, 150, 20).build());
-		xaero.active = luna.map.data.MapSession.world() != null;
-		online.active = luna.map.data.MapSession.world() != null;
+				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(right, top + 100, 150, 20).build());
+		xaero.active = MapSession.world() != null;
+		online.active = MapSession.world() != null;
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-				.bounds(width / 2 - 100, top + 104, 200, 20).build());
+				.bounds(width / 2 - 100, top + 128, 200, 20).build());
 	}
 
 	@Override
@@ -73,13 +75,17 @@ public class LunaScreen extends Screen {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 		int axoW = AXO_W * AXO_SCALE;
 		int axoH = AXO_H * AXO_SCALE;
-		int top = height / 2 - 40;
+		int top = top();
 		int axoY = top - 22 - axoH;
 		graphics.blit(RenderPipelines.GUI_TEXTURED, AXO, width / 2 - axoW / 2, axoY, 0, 0,
 				axoW, axoH, AXO_W, AXO_H, AXO_W, AXO_H);
-		graphics.centeredText(font, title, width / 2, axoY - 12, LunaColors.MOON);
+		graphics.centeredText(font, Component.literal(title.getString() + " " + Updater.currentVersion()), width / 2, axoY - 12, LunaColors.MOON);
 		graphics.centeredText(font, ShaderStatus.describe(), width / 2, top - 14, LunaColors.LAVENDER);
-		graphics.centeredText(font, Component.translatable("lunamap.keys_hint"), width / 2, top + 130, 0xAAA896E8);
+		graphics.centeredText(font, Component.translatable("lunamap.keys_hint"), width / 2, top + 152, 0xAAA896E8);
+		Component update = Updater.statusText();
+		if (update != null) {
+			graphics.centeredText(font, update, width / 2, top + 164, LunaColors.PINK);
+		}
 	}
 
 	@Override

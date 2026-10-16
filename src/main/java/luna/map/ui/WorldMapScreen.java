@@ -70,15 +70,15 @@ public class WorldMapScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		frame++;
-		MapStore store = MapSession.store();
+		MapStore store = MapSession.viewStore();
 		if (store != null) {
 			drawRegions(graphics, store);
 			for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
 				int sx = screenX(waypoint.x + 0.5);
 				int sy = screenY(waypoint.z + 0.5);
-				MapDraw.waypoint(graphics, font, waypoint, sx, sy);
+				MapDraw.waypoint(graphics, waypoint, sx, sy, 3);
 				if (scale >= 0.5) {
-					graphics.centeredText(font, waypoint.name, sx, sy + 7, LunaColors.WHITE);
+					graphics.centeredText(font, waypoint.name, sx, sy + 6, LunaColors.WHITE);
 				}
 			}
 			LocalPlayer player = minecraft.player;
@@ -89,7 +89,8 @@ public class WorldMapScreen extends Screen {
 		}
 
 		graphics.fill(0, 0, width, 16, 0xCC110D28);
-		graphics.centeredText(font, title, width / 2, 4, LunaColors.MOON);
+		graphics.centeredText(font, MapSession.underground() ? Component.translatable("lunamap.worldmap.cave_title") : title,
+				width / 2, 4, LunaColors.MOON);
 		graphics.fill(0, height - 28, width, height, 0xCC110D28);
 		int bx = (int) Math.floor(centerX + (mouseX - width / 2.0) / scale);
 		int bz = (int) Math.floor(centerZ + (mouseY - height / 2.0) / scale);
