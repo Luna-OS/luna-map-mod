@@ -54,11 +54,13 @@ automatisch zugeordnet, nichts auswählen.
   Stufen mit 5 bzw. 25 Blöcken pro Pixel) – so weit, wie die Karte auf dem Server reicht.
 - **Nah dran / Minimap:** blockgenaue Kacheln um dich herum und im sichtbaren Ausschnitt; die Weltkarte zoomt bis
   32 Pixel pro Block, die Minimap hat zusätzlich „Sehr nah“.
+- **Detailansicht:** Ab 3 Pixeln pro Block zeichnet Luna Map BlueMaps hochaufgelöste 3D-Kacheln von oben – mit echten
+  Block-Texturen (16 Pixel pro Block, Wasser durchsichtig, Schatten unter Überhängen). Auch in der Minimap bei „Sehr nah“.
 - **Immer aktuell:** alle 2 Minuten (Übersicht alle 5 Minuten) wird nachgesehen, ob BlueMap neu gerendert hat –
   geänderte Kacheln werden automatisch übernommen, unveränderte nicht nochmal verarbeitet.
   Wo du gerade bist (geladene Chunks), zählt immer der eigene Live-Scan.
 - **Offline:** geladene Kacheln landen in `lunamap/<server>/bluemap/` und werden genutzt, wenn die BlueMap mal nicht erreichbar ist.
-- Es werden nur Dateien gelesen (`settings.json`, `tiles/…png`, `live/players.json`), es wird nichts an den Server geschickt.
+- Es werden nur Dateien gelesen (`settings.json`, `tiles/…png`, `tiles/0/…prbm`, `textures.json`, `live/players.json`), es wird nichts an den Server geschickt.
 
 ## Zusammen mit deinen anderen Mods
 

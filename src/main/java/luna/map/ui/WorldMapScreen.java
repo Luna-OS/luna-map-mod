@@ -8,6 +8,7 @@ import luna.map.data.MapRegion;
 import luna.map.data.MapSession;
 import luna.map.data.MapStore;
 import luna.map.data.Waypoint;
+import luna.map.online.BlueMapHires;
 import luna.map.online.BlueMapOverview;
 import luna.map.online.BlueMapSource;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -74,6 +75,13 @@ public class WorldMapScreen extends Screen {
 			// alles Kartige nur zwischen Kopf- und Fusszeile (sonst ragen z. B. Spielernamen hinein)
 			graphics.enableScissor(0, 16, width, height - 28);
 			drawRegions(graphics, store);
+			// nah dran: BlueMap-Details mit echten Block-Texturen obendrauf
+			if (scale >= BlueMapHires.MIN_PIXELS_PER_BLOCK && !MapSession.underground()) {
+				double halfW = width / 2.0 / scale;
+				double halfH = height / 2.0 / scale;
+				BlueMapHires.draw(graphics, centerX - halfW, centerZ - halfH, centerX + halfW, centerZ + halfH,
+						this::screenXd, this::screenYd);
+			}
 			for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
 				int sx = screenX(waypoint.x + 0.5);
 				int sy = screenY(waypoint.z + 0.5);

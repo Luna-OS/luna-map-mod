@@ -79,6 +79,7 @@ public final class BlueMapSource {
 		link();
 		link = newLink;
 		BlueMapOverview.releaseAll();
+		BlueMapHires.releaseAll();
 		clearFetched();
 		lastError = null;
 		if (newLink == null) {

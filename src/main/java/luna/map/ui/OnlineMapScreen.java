@@ -126,6 +126,7 @@ public class OnlineMapScreen extends Screen {
 				for (BlueMapClient.MapInfo m : maps) {
 					link.names.put(m.id(), m.name());
 					link.tileSizes.put(m.id(), m.tileSize());
+					link.hires.put(m.id(), m.hires());
 				}
 				BlueMapAuto.assignAll(link);
 				if (old != null && old.url.equals(link.url)) {

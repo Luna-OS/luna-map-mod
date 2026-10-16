@@ -26,6 +26,8 @@ public class BlueMapLink {
 	public Map<String, String> maps = new HashMap<>();
 	/** BlueMap-Karten-ID -> Kantenlaenge einer Lowres-Kachel in Bloecken. */
 	public Map<String, Integer> tileSizes = new HashMap<>();
+	/** BlueMap-Karten-ID -> Hires-Raster {Kantenlaenge, Verschiebung X, Verschiebung Z}. */
+	public Map<String, int[]> hires = new HashMap<>();
 	/** Alle Karten auf dem Server: ID -> Anzeigename (fuer neue Dimensionen). */
 	public Map<String, String> names = new HashMap<>();
 	/** Dimensionen, deren Karte sicher erkannt wurde (Spieler stand auf der Live-Karte). */
@@ -45,6 +47,9 @@ public class BlueMapLink {
 					}
 					if (link.liveRoot == null) {
 						link.liveRoot = "maps";
+					}
+					if (link.hires == null) {
+						link.hires = new HashMap<>();
 					}
 					if (link.names == null) {
 						link.names = new HashMap<>();
