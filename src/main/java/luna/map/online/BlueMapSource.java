@@ -58,6 +58,7 @@ public final class BlueMapSource {
 	public static void setLink(BlueMapLink newLink) {
 		link();
 		link = newLink;
+		BlueMapOverview.releaseAll();
 		FETCHED.clear();
 		lastError = null;
 		if (newLink == null) {

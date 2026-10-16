@@ -7,6 +7,7 @@ import luna.map.data.MapRegion;
 import luna.map.data.MapSession;
 import luna.map.data.MapStore;
 import luna.map.data.Waypoint;
+import luna.map.online.BlueMapOverview;
 import luna.map.online.BlueMapSource;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -19,7 +20,9 @@ import net.minecraft.resources.Identifier;
 
 /** Vollbild-Weltkarte: ziehen zum Verschieben, Mausrad zum Zoomen, Rechtsklick fuer einen Wegpunkt. */
 public class WorldMapScreen extends Screen {
-	private static final double MIN_SCALE = 0.125;
+	/** Ohne BlueMap reicht 1/8; mit BlueMap-Uebersicht kann man bis zur ganzen Serverkarte heraus. */
+	private static final double MIN_SCALE_OWN = 0.125;
+	private static final double MIN_SCALE_ONLINE = 1 / 48.0;
 	private static final double MAX_SCALE = 8;
 	private static double savedScale = 1;
 
@@ -99,7 +102,17 @@ public class WorldMapScreen extends Screen {
 	private void drawRegions(GuiGraphicsExtractor graphics, MapStore store) {
 		double halfW = width / 2.0 / scale;
 		double halfH = height / 2.0 / scale;
-		BlueMapSource.request((int) (centerX - halfW), (int) (centerZ - halfH), (int) (centerX + halfW), (int) (centerZ + halfH));
+		double blocksPerPixel = 1 / scale;
+		if (BlueMapOverview.lodFor(blocksPerPixel) > 1 || scale < MIN_SCALE_OWN) {
+			BlueMapOverview.draw(graphics, centerX - halfW, centerZ - halfH, centerX + halfW, centerZ + halfH,
+					blocksPerPixel, this::screenXd, this::screenYd);
+		} else {
+			BlueMapSource.request((int) (centerX - halfW), (int) (centerZ - halfH), (int) (centerX + halfW), (int) (centerZ + halfH));
+		}
+		if (scale < MIN_SCALE_OWN) {
+			// so weit draussen nur die Uebersicht, sonst waeren es hunderte Regionstexturen
+			return;
+		}
 		int rx0 = (int) Math.floor((centerX - halfW) / MapRegion.SIZE);
 		int rx1 = (int) Math.floor((centerX + halfW) / MapRegion.SIZE);
 		int rz0 = (int) Math.floor((centerZ - halfH) / MapRegion.SIZE);
@@ -120,6 +133,14 @@ public class WorldMapScreen extends Screen {
 			}
 		}
 		store.trimTextures();
+	}
+
+	private double screenXd(double blockX) {
+		return width / 2.0 + (blockX - centerX) * scale;
+	}
+
+	private double screenYd(double blockZ) {
+		return height / 2.0 + (blockZ - centerZ) * scale;
 	}
 
 	private int screenX(double blockX) {
@@ -159,7 +180,8 @@ public class WorldMapScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
 		double before = scale;
-		scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * Math.pow(2, scrollY * 0.5)));
+		double min = BlueMapOverview.available() ? MIN_SCALE_ONLINE : MIN_SCALE_OWN;
+		scale = Math.max(min, Math.min(MAX_SCALE, scale * Math.pow(2, scrollY * 0.5)));
 		// Punkt unter dem Mauszeiger bleibt stehen
 		double mx = mouseX - width / 2.0;
 		double my = mouseY - height / 2.0;

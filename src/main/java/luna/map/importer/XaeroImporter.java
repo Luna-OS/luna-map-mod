@@ -207,6 +207,9 @@ public final class XaeroImporter {
 				int bz = z0 + pz * part;
 				boolean inMemory = live != null && live.isLoaded(bx >> MapRegion.SHIFT, bz >> MapRegion.SHIFT);
 				(inMemory ? live : files).merge(bx, bz, part, part, piece, false, null);
+				if (live != null && !inMemory) {
+					live.forget(bx >> MapRegion.SHIFT, bz >> MapRegion.SHIFT);
+				}
 			}
 		}
 		files.flush();

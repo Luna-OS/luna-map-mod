@@ -22,11 +22,13 @@ import luna.map.LunaMap;
 public final class MapStore {
 	private static final int MAGIC = 0x4C554E41; // "LUNA"
 	private static final int VERSION = 1;
-	private static final int MAX_TEXTURES = 96;
+	private static final int MAX_TEXTURES = 160;
 
 	private final Path dir;
 	private final String textureOwner;
 	private final Map<Long, MapRegion> regions = new HashMap<>();
+	/** Regionen ohne Datei, damit die Weltkarte nicht jedes Bild erneut auf der Platte nachsieht. */
+	private final java.util.Set<Long> missing = new java.util.HashSet<>();
 	private MapRegion last;
 	/** Wird bei jeder Aenderung erhoeht, damit die Minimap weiss, wann sie neu zeichnen muss. */
 	public int version;
@@ -56,12 +58,19 @@ public final class MapStore {
 		long key = key(rx, rz);
 		MapRegion region = regions.get(key);
 		if (region == null) {
+			if (!create && missing.contains(key)) {
+				return null;
+			}
 			region = load(rx, rz);
+			if (region == null && !create) {
+				missing.add(key);
+			}
 			if (region == null && create) {
 				region = new MapRegion(rx, rz);
 			}
 			if (region != null) {
 				regions.put(key, region);
+				missing.remove(key);
 			}
 		}
 		if (region != null) {
@@ -108,6 +117,11 @@ public final class MapStore {
 		if (changed) {
 			version++;
 		}
+	}
+
+	/** Eine andere MapStore-Instanz hat die Datei dieser Region geschrieben: beim naechsten Zugriff neu lesen. */
+	public void forget(int rx, int rz) {
+		missing.remove(key(rx, rz));
 	}
 
 	/** Ist die Region gerade im Speicher (dann muss in diese Instanz geschrieben werden)? */
@@ -175,6 +189,7 @@ public final class MapStore {
 	public void flush() {
 		save();
 		regions.clear();
+		missing.clear();
 		last = null;
 	}
 

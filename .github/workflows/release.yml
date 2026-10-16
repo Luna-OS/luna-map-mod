@@ -1,0 +1,30 @@
+name: Release
+
+# Ein Tag wie v2.0.0 pushen -> GitHub-Release mit dem Jar aus dist/
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release mit Jar anlegen
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Luna Map ${{ github.ref_name }}
+          files: dist/*.jar
+          body: |
+            Luna Map – eigenständige Minimap, Weltkarte und Wegpunkte für Fabric 26.3, im Luna-Look mit Axo.
+
+            - Jar in den `mods`-Ordner legen (braucht Fabric API, Mod Menu optional)
+            - Xaero's Minimap/World Map vorher entfernen; deren Karten und Wegpunkte lassen sich über Einstellungen → „Xaero-Daten holen“ übernehmen
+            - BlueMap des Servers über Einstellungen → „Online-Karte (BlueMap)“ verbinden
+            - Tasten: J Weltkarte · B Wegpunkt · N Minimap an/aus
+
+            Details: siehe README.

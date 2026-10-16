@@ -20,7 +20,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 
 ## Installation
 
-1. [`dist/luna-map-2.0.0+26.3.jar`](dist/luna-map-2.0.0+26.3.jar) in den `mods`-Ordner.
+1. [`dist/luna-map-2.0.0+26.3.jar`](dist/luna-map-2.0.0+26.3.jar) (oder aus den [Releases](https://github.com/Luna-OS/luna-map-mod/releases)) in den `mods`-Ordner.
 2. Braucht nur **Fabric API**. **Mod Menu** ist optional (Einstellungen auch über die Weltkarte → *Einstellungen*).
 3. **Xaero's Minimap und Xaero's World Map rauswerfen** (und die alte `luna-map-1.0.0+26.3.jar`) – sonst gibt es
    doppelte Karten und doppelte Tasten. Deine Xaero-Daten bleiben im Ordner `xaero` liegen und können importiert werden.
@@ -44,8 +44,12 @@ Link aus dem Browser einfügen (z. B. `https://map.server.de/#world:…`) → *V
 ![Weltkarte mit BlueMap](docs/weltkarte-bluemap.jpg)
 
 - Der Link wird **nur für diesen Server/diese Welt** gespeichert (`lunamap/<server>/bluemap.json`), pro Dimension eine Karte.
-- Luna Map lädt nur die Lowres-Kacheln (1 Pixel = 1 Block) um dich herum bzw. im sichtbaren Weltkarten-Ausschnitt
-  und aktualisiert sie alle 10 Minuten. Wo du gerade bist (geladene Chunks), zählt immer der eigene Live-Scan.
+- **Ganze Karte:** Zoomst du auf der Weltkarte heraus, zeigt Luna Map die komplette BlueMap (BlueMaps grobe
+  Stufen mit 5 bzw. 25 Blöcken pro Pixel) – so weit, wie die Karte auf dem Server reicht.
+- **Nah dran / Minimap:** blockgenaue Kacheln um dich herum und im sichtbaren Ausschnitt, alle 10 Minuten frisch.
+  Wo du gerade bist (geladene Chunks), zählt immer der eigene Live-Scan.
+- **Offline:** geladene Kacheln landen in `lunamap/<server>/bluemap/` und werden genutzt, wenn die BlueMap mal nicht erreichbar ist.
+- Es werden nur Bilder gelesen (`settings.json` und `tiles/…png`), es wird nichts an den Server geschickt.
 
 ## Zusammen mit deinen anderen Mods
 
