@@ -3,7 +3,7 @@
   "id": "lunamap",
   "version": "${version}",
   "name": "Luna Map",
-  "description": "Luna-Look für Xaero's Minimap und Xaero's World Map: Axo-Logo, Nacht-Theme und ein gemeinsamer Einstellungs-Screen für beide Karten.",
+  "description": "Minimap, Weltkarte und Wegpunkte im Luna-Look – mit Axo und kompatibel mit Iris-Shadern.",
   "authors": ["Luna-OS"],
   "contact": {
     "sources": "https://github.com/Luna-OS/luna-map-mod",
@@ -13,7 +13,6 @@
   "icon": "assets/lunamap/icon.png",
   "environment": "client",
   "entrypoints": {
-    "preLaunch": ["luna.map.LunaPreLaunch"],
     "client": ["luna.map.LunaMap"],
     "modmenu": ["luna.map.LunaMapModMenu"]
   },
@@ -21,20 +20,13 @@
     "fabricloader": ">=0.19.2",
     "minecraft": ">=26.3 <26.4",
     "java": ">=25",
-    "fabric-resource-loader-v1": "*",
-    "xaerominimap": ">=26.6.0",
-    "xaeroworldmap": ">=1.47.0"
+    "fabric-api-base": "*",
+    "fabric-rendering-v1": "*",
+    "fabric-key-mapping-api-v1": "*",
+    "fabric-lifecycle-events-v1": "*"
   },
   "suggests": {
     "modmenu": "*",
     "iris": "*"
-  },
-  "custom": {
-    "modmenu": {
-      "links": {
-        "lunamap.link.minimap": "https://modrinth.com/mod/xaeros-minimap",
-        "lunamap.link.worldmap": "https://modrinth.com/mod/xaeros-world-map"
-      }
-    }
   }
 }

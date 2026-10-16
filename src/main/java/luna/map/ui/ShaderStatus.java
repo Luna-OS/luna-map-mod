@@ -1,4 +1,4 @@
-package luna.map;
+package luna.map.ui;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -14,8 +14,13 @@ final class ShaderStatus {
 			return Component.translatable("lunamap.shaders.no_iris");
 		}
 		return Iris.shaderPackInUse()
-				? Component.translatable("lunamap.shaders.active", LunaMap.version("iris"))
-				: Component.translatable("lunamap.shaders.inactive", LunaMap.version("iris"));
+				? Component.translatable("lunamap.shaders.active", irisVersion())
+				: Component.translatable("lunamap.shaders.inactive", irisVersion());
+	}
+
+	private static String irisVersion() {
+		return FabricLoader.getInstance().getModContainer("iris")
+				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
 	}
 
 	private static final class Iris {

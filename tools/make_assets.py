@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """Erzeugt die Luna-Map-Grafiken.
 
-  python3 tools/make_assets.py <pfad/zu/xaerominimap-*.jar>
+  python3 tools/make_assets.py
 
-- assets/lunamap/icon.png          Mod-Icon (Axo vor Nachthimmel mit Mond)
-- assets/lunamap/textures/gui/axo.png   Axo-Logo fuer den Luna-Map-Screen
-- resourcepacks/luna_theme/.../minimap_frame.png   Minimap-Rahmen in Luna-Farben
-  (umgefaerbt aus dem Rahmen im Minimap-Jar, das deshalb als Argument noetig ist)
+- assets/lunamap/icon.png               Mod-Icon (Axo vor Nachthimmel mit Mond)
+- assets/lunamap/textures/gui/axo.png   Axo-Logo fuer den Einstellungs-Screen
+- assets/lunamap/textures/gui/arrow.png Spielerpfeil fuer Minimap und Weltkarte
 """
-import io
-import sys
-import zipfile
 from pathlib import Path
 
 from PIL import Image
@@ -95,42 +91,44 @@ def make_icon(axo):
     return img.resize((256, 256), Image.NEAREST)
 
 
-def recolor_frame(src):
-    """Graue Rahmenpixel -> Luna-Verlauf, halbtransparentes Weiss -> Lavendel."""
-    stops = [(0, (14, 10, 34)), (45, (40, 30, 86)), (95, OUTLINE[:3]), (150, LAVENDER[:3]), (200, MOON[:3])]
-    out = Image.new("RGBA", src.size, (0, 0, 0, 0))
-    for y in range(src.height):
-        for x in range(src.width):
-            r, g, b, a = src.getpixel((x, y))
-            if a == 0:
-                continue
-            if a < 255 and r > 200:
-                out.putpixel((x, y), (214, 200, 255, a))
-                continue
-            lum = (r + g + b) / 3
-            for (l0, c0), (l1, c1) in zip(stops, stops[1:]):
-                if lum <= l1:
-                    t = (lum - l0) / (l1 - l0)
-                    out.putpixel((x, y), tuple(int(c0[i] + (c1[i] - c0[i]) * t) for i in range(3)) + (a,))
-                    break
-            else:
-                out.putpixel((x, y), MOON[:3] + (a,))
-    return out
+ARROW = [
+    "......OO......",
+    ".....OPPO.....",
+    ".....OPPO.....",
+    "....OPPPPO....",
+    "....OPPPPO....",
+    "...OPPPPPPO...",
+    "...OPPPPPPO...",
+    "..OPPPPPPPPO..",
+    "..OPPPPPPPPO..",
+    ".OPPPPOOPPPPO.",
+    ".OPPPO..OPPPO.",
+    "OPPOO....OOPPO",
+    "OOO........OOO",
+]
+
+
+def make_arrow():
+    """16x16, Spitze zeigt nach oben (Norden)."""
+    img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    colors = {"O": NIGHT, "P": (246, 168, 200, 255)}
+    for y, row in enumerate(ARROW):
+        for x, ch in enumerate(row):
+            if ch in colors:
+                img.putpixel((x + 1, y + 1), colors[ch])
+    # Mondgelbe Spitze
+    for x, y in [(7, 2), (8, 2), (7, 3), (8, 3)]:
+        img.putpixel((x, y), MOON)
+    return img
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit(__doc__)
     axo = axo_sprite()
-    (RES / "assets/lunamap/textures/gui").mkdir(parents=True, exist_ok=True)
+    gui = RES / "assets/lunamap/textures/gui"
+    gui.mkdir(parents=True, exist_ok=True)
     make_icon(axo).save(RES / "assets/lunamap/icon.png")
-    axo.save(RES / "assets/lunamap/textures/gui/axo.png")
-
-    with zipfile.ZipFile(sys.argv[1]) as jar:
-        frame = Image.open(io.BytesIO(jar.read("assets/xaerobetterpvp/gui/minimap_frame.png"))).convert("RGBA")
-    dst = RES / "resourcepacks/luna_theme/assets/xaerobetterpvp/gui/minimap_frame.png"
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    recolor_frame(frame).save(dst)
+    axo.save(gui / "axo.png")
+    make_arrow().save(gui / "arrow.png")
     print("ok")
 
 

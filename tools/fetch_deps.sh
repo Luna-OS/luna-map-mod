@@ -28,6 +28,8 @@ PY2
   f="$DEPS/libs/${url##*/}"; [ -s "$f" ] || curl -fsSL -o "$f" "$url"
 done
 
-# Fabric API ist ein Sammel-Jar: das benoetigte Modul daraus auspacken
-unzip -q -o -j "$DEPS/fabric-api-0.163.0+26.3.jar" 'META-INF/jars/fabric-resource-loader-v1-*.jar' -d "$DEPS"
+# Fabric API ist ein Sammel-Jar: die benoetigten Module daraus auspacken
+for m in fabric-api-base fabric-rendering-v1 fabric-key-mapping-api-v1 fabric-lifecycle-events-v1; do
+  unzip -q -o -j "$DEPS/fabric-api-0.163.0+26.3.jar" "META-INF/jars/$m-*.jar" -d "$DEPS"
+done
 echo "Abhaengigkeiten in $DEPS"
