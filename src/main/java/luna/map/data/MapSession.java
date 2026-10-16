@@ -179,6 +179,31 @@ public final class MapSession {
 		underground = false;
 	}
 
+	/**
+	 * Loescht die gespeicherte Karte der aktuellen Dimension (Oberflaeche, Hoehlen, Detailstufen) und
+	 * baut sie neu auf. Wegpunkte und der BlueMap-Link bleiben.
+	 */
+	public static void resetDimension(Minecraft mc) {
+		if (store == null || dimension == null) {
+			return;
+		}
+		store.close();
+		store = null;
+		closeCaves();
+		Path folder = dimensionFolder(dimension);
+		try (java.util.stream.Stream<Path> walk = java.nio.file.Files.walk(folder)) {
+			for (Path path : walk.sorted(java.util.Comparator.reverseOrder()).toList()) {
+				java.nio.file.Files.deleteIfExists(path);
+			}
+		} catch (java.io.IOException e) {
+			luna.map.LunaMap.LOGGER.warn("Konnte {} nicht ganz loeschen", folder, e);
+		}
+		// beim naechsten Tick wird die Karte neu angelegt und die geladenen Chunks neu gelesen
+		String keep = dimension;
+		dimension = null;
+		luna.map.LunaMap.LOGGER.info("Karte von {} zurueckgesetzt", keep);
+	}
+
 	public static void leave() {
 		if (store != null) {
 			store.close();

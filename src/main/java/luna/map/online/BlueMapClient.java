@@ -36,9 +36,34 @@ public final class BlueMapClient {
 				.GET().build();
 	}
 
-	/** Liest die Liste der Karten (settings.json und maps/<id>/settings.json). */
-	public static CompletableFuture<List<MapInfo>> fetchMaps(String baseUrl) {
+	/** Ergebnis der Verbindung: die Adresse, die funktioniert hat, und ihre Karten. */
+	public record Connection(String baseUrl, List<MapInfo> maps) {
+	}
+
+	/**
+	 * Verbindet sich mit einer BlueMap. Klappt https nicht, wird http versucht (der eingebaute
+	 * Webserver von BlueMap laeuft oft ohne https, z. B. http://server:8100/).
+	 */
+	public static CompletableFuture<Connection> connect(String baseUrl) {
 		return CompletableFuture.supplyAsync(() -> {
+			try {
+				return new Connection(baseUrl, maps(baseUrl));
+			} catch (RuntimeException first) {
+				if (baseUrl.startsWith("https://")) {
+					String http = "http://" + baseUrl.substring("https://".length());
+					try {
+						return new Connection(http, maps(http));
+					} catch (RuntimeException ignored) {
+						// erste Fehlermeldung ist meist aussagekraeftiger
+					}
+				}
+				throw first;
+			}
+		});
+	}
+
+	private static List<MapInfo> maps(String baseUrl) {
+		{
 			try {
 				JsonObject settings = getJson(baseUrl + "settings.json");
 				String root = settings.has("mapDataRoot") ? settings.get("mapDataRoot").getAsString() : "maps";
@@ -67,12 +92,12 @@ public final class BlueMapClient {
 				}
 				return maps;
 			} catch (IOException e) {
-				throw new RuntimeException(e.getMessage(), e);
+				throw new RuntimeException(e.getMessage() != null ? e.getMessage() : e.toString(), e);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				throw new RuntimeException(e);
 			}
-		});
+		}
 	}
 
 	private static JsonObject getJson(String url) throws IOException, InterruptedException {

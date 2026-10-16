@@ -79,6 +79,8 @@ public class BlueMapLink {
 		if (url.endsWith("index.html")) {
 			url = url.substring(0, url.length() - "index.html".length());
 		}
+		// abgeschnittenes oder falsches Schema ("ps://", "ttps://") weg, danach normal weiter
+		url = url.replaceFirst("^(?i)(?!https?:)[a-z]{1,5}:/+", "");
 		// "https:///", "https//" oder ganz ohne Schema -> sauberes "https://"
 		java.util.regex.Matcher scheme = java.util.regex.Pattern.compile("^(https?):?/*", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(url);
 		if (scheme.find()) {
