@@ -23,7 +23,7 @@ public final class BlueMapClient {
 			.build();
 
 	/** Eine Karte auf dem BlueMap-Server. */
-	public record MapInfo(String id, String name, int tileSize) {
+	public record MapInfo(String id, String name, int tileSize, int[] hires) {
 	}
 
 	private BlueMapClient() {
@@ -77,6 +77,8 @@ public final class BlueMapClient {
 					String id = element.getAsString();
 					String name = id;
 					int tileSize = 500;
+					// Hires-Raster: Kantenlaenge und Verschiebung (BlueMap-Standard 32 Bloecke, +2)
+					int[] hires = {32, 2, 2};
 					try {
 						JsonObject map = getJson(baseUrl + root + "/" + id + "/settings.json");
 						if (map.has("name")) {
@@ -86,10 +88,20 @@ public final class BlueMapClient {
 						if (lowres != null && lowres.has("tileSize")) {
 							tileSize = lowres.getAsJsonArray("tileSize").get(0).getAsInt();
 						}
+						JsonObject hiresSettings = map.getAsJsonObject("hires");
+						if (hiresSettings != null) {
+							if (hiresSettings.has("tileSize")) {
+								hires[0] = hiresSettings.getAsJsonArray("tileSize").get(0).getAsInt();
+							}
+							if (hiresSettings.has("translate")) {
+								hires[1] = hiresSettings.getAsJsonArray("translate").get(0).getAsInt();
+								hires[2] = hiresSettings.getAsJsonArray("translate").get(1).getAsInt();
+							}
+						}
 					} catch (IOException | RuntimeException e) {
 						// Karte ohne eigene settings.json: Standardwerte
 					}
-					maps.add(new MapInfo(id, name, tileSize));
+					maps.add(new MapInfo(id, name, tileSize, hires));
 				}
 				return new Connection(baseUrl, maps, liveRoot);
 			} catch (IOException e) {
@@ -145,7 +157,7 @@ public final class BlueMapClient {
 		return switch (response.statusCode()) {
 			case 304 -> new Fetched(null, true, etag, lastModified);
 			case 404 -> new Fetched(null, false, null, null);
-			case 200 -> new Fetched(response.body(), false, newEtag, newModified);
+			case 200 -> new Fetched(HiresRenderer.gunzip(response.body()), false, newEtag, newModified);
 			default -> throw new IOException("HTTP " + response.statusCode());
 		};
 	}

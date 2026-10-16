@@ -8,6 +8,7 @@ import luna.map.LunaMap;
 import luna.map.data.MapSession;
 import luna.map.data.MapStore;
 import luna.map.data.Waypoint;
+import luna.map.online.BlueMapHires;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -84,6 +85,14 @@ public final class MinimapHud implements HudElement {
 		double fx = player.getX() - (px - radius);
 		double fz = player.getZ() - (pz - radius);
 		graphics.enableScissor(x0, y0, x0 + size, y0 + size);
+		if (scale >= BlueMapHires.MIN_PIXELS_PER_BLOCK && !MapSession.underground()) {
+			// sehr nah: BlueMap-Details mit Block-Texturen
+			int left = px - radius;
+			int top = pz - radius;
+			float s = scale;
+			BlueMapHires.draw(graphics, left, top, left + textureSize, top + textureSize,
+					bx -> x0 + (bx - left) * s, bz -> y0 + (bz - top) * s);
+		}
 		if (config.radar && mc.level != null) {
 			// pro Art einmal durch, damit Spieler ueber Mobs und Mobs ueber Items liegen
 			for (RadarIcons.Kind kind : RadarIcons.Kind.values()) {
