@@ -43,6 +43,15 @@ public final class MapStore {
 	MapStore(Path dir, String textureOwner) {
 		this.dir = dir;
 		this.textureOwner = textureOwner;
+		this.lod = new LodCache(this, dir.resolve("lod"), textureOwner);
+	}
+
+	private final LodCache lod;
+	/** Wie viele Regionen pro Bild noch von der Platte geladen werden duerfen (die Weltkarte begrenzt das). */
+	public int loadBudget = Integer.MAX_VALUE;
+
+	public LodCache lod() {
+		return lod;
 	}
 
 	private static long key(int rx, int rz) {
@@ -61,6 +70,10 @@ public final class MapStore {
 			if (!create && missing.contains(key)) {
 				return null;
 			}
+			if (!create && loadBudget <= 0) {
+				return null; // naechstes Bild weiter laden, damit es nicht ruckelt
+			}
+			loadBudget--;
 			region = load(rx, rz);
 			if (region == null && !create) {
 				missing.add(key);
@@ -122,6 +135,19 @@ public final class MapStore {
 	/** Eine andere MapStore-Instanz hat die Datei dieser Region geschrieben: beim naechsten Zugriff neu lesen. */
 	public void forget(int rx, int rz) {
 		missing.remove(key(rx, rz));
+		lod.invalidate(rx, rz);
+	}
+
+	/** Region wieder aus dem Speicher werfen, wenn sie nur kurz zum Lesen geladen war. */
+	void unloadIfClean(int rx, int rz) {
+		long key = key(rx, rz);
+		MapRegion region = regions.get(key);
+		if (region != null && !region.unsaved && !region.hasTexture()) {
+			regions.remove(key);
+			if (last == region) {
+				last = null;
+			}
+		}
 	}
 
 	/** Ist die Region gerade im Speicher (dann muss in diese Instanz geschrieben werden)? */
@@ -138,8 +164,8 @@ public final class MapStore {
 		return textureOwner;
 	}
 
-	/** Haelt die Zahl der GPU-Texturen klein, indem lange nicht gezeigte freigegeben werden. */
-	public void trimTextures() {
+	/** Haelt die Zahl der GPU-Texturen klein; was in diesem Bild gezeichnet wird, bleibt immer. */
+	public void trimTextures(long frame) {
 		List<MapRegion> withTexture = new ArrayList<>();
 		for (MapRegion region : regions.values()) {
 			if (region.hasTexture()) {
@@ -151,6 +177,9 @@ public final class MapStore {
 		}
 		withTexture.sort(Comparator.comparingLong(r -> r.lastUsed));
 		for (int i = 0; i < withTexture.size() - MAX_TEXTURES; i++) {
+			if (withTexture.get(i).lastUsed >= frame - 2) {
+				break;
+			}
 			withTexture.get(i).releaseTexture();
 		}
 	}
@@ -160,7 +189,17 @@ public final class MapStore {
 	}
 
 	private MapRegion load(int rx, int rz) {
-		Path file = file(rx, rz);
+		int[] colors = readColors(file(rx, rz));
+		if (colors == null) {
+			return null;
+		}
+		MapRegion region = new MapRegion(rx, rz);
+		System.arraycopy(colors, 0, region.colors, 0, colors.length);
+		return region;
+	}
+
+	/** Farben einer Regionsdatei, oder null. Darf auch aus Hintergrund-Threads aufgerufen werden. */
+	static int[] readColors(Path file) {
 		if (!Files.exists(file)) {
 			return null;
 		}
@@ -168,15 +207,19 @@ public final class MapStore {
 			if (in.readInt() != MAGIC || in.readInt() != VERSION) {
 				return null;
 			}
-			MapRegion region = new MapRegion(rx, rz);
-			for (int i = 0; i < region.colors.length; i++) {
-				region.colors[i] = in.readInt();
+			int[] colors = new int[MapRegion.SIZE * MapRegion.SIZE];
+			for (int i = 0; i < colors.length; i++) {
+				colors[i] = in.readInt();
 			}
-			return region;
+			return colors;
 		} catch (IOException e) {
 			LunaMap.LOGGER.warn("Kartenregion {} ist beschaedigt, wird neu erkundet", file, e);
 			return null;
 		}
+	}
+
+	Path regionFile(int rx, int rz) {
+		return file(rx, rz);
 	}
 
 	public void save() {
@@ -231,6 +274,7 @@ public final class MapStore {
 			}
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
 			region.unsaved = false;
+			lod.invalidate(region.x, region.z);
 		} catch (IOException e) {
 			LunaMap.LOGGER.warn("Konnte Kartenregion {} nicht speichern", file, e);
 		}
@@ -238,6 +282,7 @@ public final class MapStore {
 
 	void close() {
 		save();
+		lod.close();
 		for (MapRegion region : regions.values()) {
 			region.releaseTexture();
 		}

@@ -23,7 +23,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 
 ## Installation
 
-1. [`dist/luna-map-2.1.0+26.3.jar`](dist/luna-map-2.1.0+26.3.jar) (oder aus den [Releases](https://github.com/Luna-OS/luna-map-mod/releases)) in den `mods`-Ordner.
+1. [`dist/luna-map-2.1.1+26.3.jar`](dist/luna-map-2.1.1+26.3.jar) (oder aus den [Releases](https://github.com/Luna-OS/luna-map-mod/releases)) in den `mods`-Ordner.
 2. Braucht nur **Fabric API**. **Mod Menu** ist optional (Einstellungen auch über die Weltkarte → *Einstellungen*).
 3. **Xaero's Minimap und Xaero's World Map rauswerfen** (und die alte `luna-map-1.0.0+26.3.jar`) – sonst gibt es
    doppelte Karten und doppelte Tasten. Deine Xaero-Daten bleiben im Ordner `xaero` liegen und können importiert werden.

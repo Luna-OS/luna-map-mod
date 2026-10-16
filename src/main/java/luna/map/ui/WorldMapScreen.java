@@ -3,6 +3,7 @@ package luna.map.ui;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import luna.map.LunaColors;
+import luna.map.data.LodCache;
 import luna.map.data.MapRegion;
 import luna.map.data.MapSession;
 import luna.map.data.MapStore;
@@ -20,9 +21,7 @@ import net.minecraft.resources.Identifier;
 
 /** Vollbild-Weltkarte: ziehen zum Verschieben, Mausrad zum Zoomen, Rechtsklick fuer einen Wegpunkt. */
 public class WorldMapScreen extends Screen {
-	/** Ohne BlueMap reicht 1/8; mit BlueMap-Uebersicht kann man bis zur ganzen Serverkarte heraus. */
-	private static final double MIN_SCALE_OWN = 0.125;
-	private static final double MIN_SCALE_ONLINE = 1 / 48.0;
+	private static final double MIN_SCALE = 1 / 48.0;
 	private static final double MAX_SCALE = 8;
 	private static double savedScale = 1;
 
@@ -104,36 +103,58 @@ public class WorldMapScreen extends Screen {
 		double halfW = width / 2.0 / scale;
 		double halfH = height / 2.0 / scale;
 		double blocksPerPixel = 1 / scale;
-		if (BlueMapOverview.lodFor(blocksPerPixel) > 1 || scale < MIN_SCALE_OWN) {
+		if (BlueMapOverview.lodFor(blocksPerPixel) > 1) {
 			BlueMapOverview.draw(graphics, centerX - halfW, centerZ - halfH, centerX + halfW, centerZ + halfH,
 					blocksPerPixel, this::screenXd, this::screenYd);
 		} else {
 			BlueMapSource.request((int) (centerX - halfW), (int) (centerZ - halfH), (int) (centerX + halfW), (int) (centerZ + halfH));
 		}
-		if (scale < MIN_SCALE_OWN) {
-			// so weit draussen nur die Uebersicht, sonst waeren es hunderte Regionstexturen
+		// Detailstufe: nah blockgenau, weiter weg zusammengefasste Kacheln (4 bzw. 16 Bloecke pro Pixel)
+		int level = scale >= 0.25 ? 0 : scale >= 1 / 16.0 ? 1 : 2;
+		if (level > 0) {
+			int span = LodCache.span(level);
+			int tx0 = Math.floorDiv((int) Math.floor(centerX - halfW), span);
+			int tx1 = Math.floorDiv((int) Math.floor(centerX + halfW), span);
+			int tz0 = Math.floorDiv((int) Math.floor(centerZ - halfH), span);
+			int tz1 = Math.floorDiv((int) Math.floor(centerZ + halfH), span);
+			for (int tz = tz0; tz <= tz1; tz++) {
+				for (int tx = tx0; tx <= tx1; tx++) {
+					Identifier texture = store.lod().texture(level, tx, tz, frame);
+					if (texture != null) {
+						blitTile(graphics, texture, tx * span, tz * span, span, LodCache.TEX);
+					}
+				}
+			}
+			store.lod().trim(frame);
 			return;
 		}
 		int rx0 = (int) Math.floor((centerX - halfW) / MapRegion.SIZE);
 		int rx1 = (int) Math.floor((centerX + halfW) / MapRegion.SIZE);
 		int rz0 = (int) Math.floor((centerZ - halfH) / MapRegion.SIZE);
 		int rz1 = (int) Math.floor((centerZ + halfH) / MapRegion.SIZE);
-		for (int rz = rz0; rz <= rz1; rz++) {
-			for (int rx = rx0; rx <= rx1; rx++) {
-				MapRegion region = store.region(rx, rz, false);
-				if (region == null) {
-					continue;
+		store.loadBudget = 8;
+		try {
+			for (int rz = rz0; rz <= rz1; rz++) {
+				for (int rx = rx0; rx <= rx1; rx++) {
+					MapRegion region = store.region(rx, rz, false);
+					if (region != null) {
+						blitTile(graphics, region.texture(store.textureOwner(), frame), rx * MapRegion.SIZE, rz * MapRegion.SIZE,
+								MapRegion.SIZE, MapRegion.SIZE);
+					}
 				}
-				Identifier texture = region.texture(store.textureOwner(), frame);
-				int x0 = screenX(rx * MapRegion.SIZE);
-				int x1 = screenX((rx + 1) * MapRegion.SIZE);
-				int y0 = screenY(rz * MapRegion.SIZE);
-				int y1 = screenY((rz + 1) * MapRegion.SIZE);
-				graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x0, y0, 0, 0, x1 - x0, y1 - y0,
-						MapRegion.SIZE, MapRegion.SIZE, MapRegion.SIZE, MapRegion.SIZE);
 			}
+		} finally {
+			store.loadBudget = Integer.MAX_VALUE;
 		}
-		store.trimTextures();
+		store.trimTextures(frame);
+	}
+
+	private void blitTile(GuiGraphicsExtractor graphics, Identifier texture, int blockX, int blockZ, int span, int texSize) {
+		int x0 = screenX(blockX);
+		int x1 = screenX(blockX + span);
+		int y0 = screenY(blockZ);
+		int y1 = screenY(blockZ + span);
+		graphics.blit(RenderPipelines.GUI_TEXTURED, texture, x0, y0, 0, 0, x1 - x0, y1 - y0, texSize, texSize, texSize, texSize);
 	}
 
 	private double screenXd(double blockX) {
@@ -181,8 +202,7 @@ public class WorldMapScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
 		double before = scale;
-		double min = BlueMapOverview.available() ? MIN_SCALE_ONLINE : MIN_SCALE_OWN;
-		scale = Math.max(min, Math.min(MAX_SCALE, scale * Math.pow(2, scrollY * 0.5)));
+		scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * Math.pow(2, scrollY * 0.5)));
 		// Punkt unter dem Mauszeiger bleibt stehen
 		double mx = mouseX - width / 2.0;
 		double my = mouseY - height / 2.0;
