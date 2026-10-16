@@ -20,10 +20,16 @@ public class BlueMapLink {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 	public String url;
+	/** Ordner der Live-Daten (players.json), meist "maps". */
+	public String liveRoot = "maps";
 	/** Dimension -> BlueMap-Karten-ID. */
 	public Map<String, String> maps = new HashMap<>();
 	/** BlueMap-Karten-ID -> Kantenlaenge einer Lowres-Kachel in Bloecken. */
 	public Map<String, Integer> tileSizes = new HashMap<>();
+	/** Alle Karten auf dem Server: ID -> Anzeigename (fuer neue Dimensionen). */
+	public Map<String, String> names = new HashMap<>();
+	/** Dimensionen, deren Karte sicher erkannt wurde (Spieler stand auf der Live-Karte). */
+	public Map<String, String> confirmed = new HashMap<>();
 
 	public static BlueMapLink load(Path folder) {
 		Path file = folder.resolve("bluemap.json");
@@ -36,6 +42,19 @@ public class BlueMapLink {
 					}
 					if (link.tileSizes == null) {
 						link.tileSizes = new HashMap<>();
+					}
+					if (link.liveRoot == null) {
+						link.liveRoot = "maps";
+					}
+					if (link.names == null) {
+						link.names = new HashMap<>();
+					}
+					if (link.confirmed == null) {
+						link.confirmed = new HashMap<>();
+					}
+					// Links aus alten Versionen kennen nur die zugeordneten Karten
+					for (String id : link.maps.values()) {
+						link.names.putIfAbsent(id, id);
 					}
 					return link;
 				}

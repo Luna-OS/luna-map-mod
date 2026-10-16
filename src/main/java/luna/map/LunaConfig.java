@@ -16,7 +16,7 @@ import net.fabricmc.loader.api.FabricLoader;
 /** Einstellungen, gespeichert in config/lunamap.json. */
 public class LunaConfig {
 	public enum Zoom {
-		NEAR(32), MEDIUM(64), FAR(128);
+		VERY_NEAR(16), NEAR(32), MEDIUM(64), FAR(128);
 
 		/** Halbe Kantenlaenge des Ausschnitts in Bloecken. */
 		public final int radius;

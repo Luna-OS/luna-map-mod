@@ -42,17 +42,23 @@ Auf dem Server (z. B. ZweersSMP) einloggen → `J` → *Einstellungen* → **Xae
 ## BlueMap (immer aktuelle Karte)
 
 Hat der Server eine [BlueMap](https://bluemap.bluecolored.de/), dann: `J` → *Einstellungen* → **Online-Karte (BlueMap)** →
-Link aus dem Browser einfügen (z. B. `https://map.server.de/#world:…`) → *Verbinden* → passende Karte wählen → *Speichern*.
+Link aus dem Browser einfügen (z. B. `https://map.server.de/#world:…`) → *Verbinden* – fertig. Alle Dimensionen werden
+automatisch zugeordnet, nichts auswählen.
 
 ![Weltkarte mit BlueMap](docs/weltkarte-bluemap.jpg)
 
 - Der Link wird **nur für diesen Server/diese Welt** gespeichert (`lunamap/<server>/bluemap.json`), pro Dimension eine Karte.
+- **Automatische Dimensionen:** zuerst nach Namen (Nether, End …), dann sicher über BlueMaps Live-Daten: Luna Map schaut,
+  auf welcher Karte dein Spieler gerade steht (✔ im Menü). Neue Dimensionen (auch aus Mods) werden beim Betreten zugeordnet.
 - **Ganze Karte:** Zoomst du auf der Weltkarte heraus, zeigt Luna Map die komplette BlueMap (BlueMaps grobe
   Stufen mit 5 bzw. 25 Blöcken pro Pixel) – so weit, wie die Karte auf dem Server reicht.
-- **Nah dran / Minimap:** blockgenaue Kacheln um dich herum und im sichtbaren Ausschnitt, alle 10 Minuten frisch.
+- **Nah dran / Minimap:** blockgenaue Kacheln um dich herum und im sichtbaren Ausschnitt; die Weltkarte zoomt bis
+  32 Pixel pro Block, die Minimap hat zusätzlich „Sehr nah“.
+- **Immer aktuell:** alle 2 Minuten (Übersicht alle 5 Minuten) wird nachgesehen, ob BlueMap neu gerendert hat –
+  geänderte Kacheln werden automatisch übernommen, unveränderte nicht nochmal verarbeitet.
   Wo du gerade bist (geladene Chunks), zählt immer der eigene Live-Scan.
 - **Offline:** geladene Kacheln landen in `lunamap/<server>/bluemap/` und werden genutzt, wenn die BlueMap mal nicht erreichbar ist.
-- Es werden nur Bilder gelesen (`settings.json` und `tiles/…png`), es wird nichts an den Server geschickt.
+- Es werden nur Dateien gelesen (`settings.json`, `tiles/…png`, `live/players.json`), es wird nichts an den Server geschickt.
 
 ## Zusammen mit deinen anderen Mods
 
