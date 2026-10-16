@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "lunamap",
+  "version": "${version}",
+  "name": "Luna Map",
+  "description": "Minimap, Weltkarte und Wegpunkte im Luna-Look – mit Axo und kompatibel mit Iris-Shadern.",
+  "authors": ["Luna-OS"],
+  "contact": {
+    "sources": "https://github.com/Luna-OS/luna-map-mod",
+    "issues": "https://github.com/Luna-OS/luna-map-mod/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/lunamap/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["luna.map.LunaMap"],
+    "modmenu": ["luna.map.LunaMapModMenu"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": ">=26.3 <26.4",
+    "java": ">=25",
+    "fabric-api-base": "*",
+    "fabric-rendering-v1": "*",
+    "fabric-key-mapping-api-v1": "*",
+    "fabric-lifecycle-events-v1": "*"
+  },
+  "suggests": {
+    "modmenu": "*",
+    "iris": "*"
+  }
+}
