@@ -1,10 +1,15 @@
 name: Release
 
-# Ein Tag wie v2.0.0 pushen -> GitHub-Release mit dem Jar aus dist/
+# Ein Tag wie v2.0.0 pushen oder den Workflow von Hand starten -> GitHub-Release mit dem Jar aus dist/
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, z. B. v2.0.0 (Tag wird angelegt)"
+        required: true
 
 permissions:
   contents: write
@@ -17,7 +22,9 @@ jobs:
       - name: Release mit Jar anlegen
         uses: softprops/action-gh-release@v2
         with:
-          name: Luna Map ${{ github.ref_name }}
+          tag_name: ${{ inputs.version || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: Luna Map ${{ inputs.version || github.ref_name }}
           files: dist/*.jar
           body: |
             Luna Map – eigenständige Minimap, Weltkarte und Wegpunkte für Fabric 26.3, im Luna-Look mit Axo.
