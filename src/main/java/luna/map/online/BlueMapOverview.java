@@ -28,7 +28,8 @@ import net.minecraft.resources.Identifier;
  * Kopie unter lunamap/<server>/bluemap/ ab, damit die Karte auch offline da ist.
  */
 public final class BlueMapOverview {
-	private static final long REFRESH_MS = 30 * 60 * 1000L;
+	/** So oft wird nachgesehen, ob BlueMap die Uebersicht neu gerendert hat. */
+	private static final long REFRESH_MS = 5 * 60 * 1000L;
 	private static final long RETRY_MS = 2 * 60 * 1000L;
 	private static final int MAX_TEXTURES = 48;
 	private static final int MAX_PENDING = 4;
@@ -49,6 +50,9 @@ public final class BlueMapOverview {
 		long requested;
 		boolean failed;
 		long lastDrawn;
+		volatile int hash;
+		volatile String etag;
+		volatile String lastModified;
 
 		Tile(String key) {
 			this.key = key;
@@ -101,8 +105,8 @@ public final class BlueMapOverview {
 				String key = lod + "/" + tx + "_" + tz;
 				Tile tile = TILES.computeIfAbsent(key, Tile::new);
 				tile.lastDrawn = now;
-				if (tile.texture == null && now - tile.requested > (tile.failed ? RETRY_MS : REFRESH_MS)
-						&& PENDING.get() < MAX_PENDING) {
+				// ohne Textur bald nochmal versuchen, mit Textur regelmaessig auf Aenderungen pruefen
+				if (now - tile.requested > (tile.failed ? RETRY_MS : REFRESH_MS) && PENDING.get() < MAX_PENDING) {
 					tile.requested = now;
 					load(link.url, mapId, lod, tx, tz, tile, newOwner);
 				}
@@ -136,11 +140,23 @@ public final class BlueMapOverview {
 			try {
 				boolean fresh = Files.exists(cache)
 						&& System.currentTimeMillis() - Files.getLastModifiedTime(cache).toMillis() < REFRESH_MS;
-				if (!fresh) {
+				if (!fresh || tile.texture != null) {
 					try {
-						png = BlueMapClient.getBytes(baseUrl + "maps/" + mapId + "/tiles/" + lod + "/"
-								+ BlueMapClient.tilePath(tx, tz) + ".png");
-						if (png != null) {
+						BlueMapClient.Fetched fetched = BlueMapClient.getIfChanged(baseUrl + "maps/" + mapId + "/tiles/" + lod + "/"
+								+ BlueMapClient.tilePath(tx, tz) + ".png", tile.etag, tile.lastModified);
+						tile.etag = fetched.etag();
+						tile.lastModified = fetched.lastModified();
+						png = fetched.body();
+						if (fetched.unchanged() || png != null && tile.texture != null && java.util.Arrays.hashCode(png) == tile.hash) {
+							// unveraendert: Kopie gilt wieder als frisch, Textur bleibt
+							if (Files.exists(cache)) {
+								Files.setLastModifiedTime(cache, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis()));
+							}
+							if (tile.texture != null) {
+								return;
+							}
+							png = null;
+						} else if (png != null) {
 							Files.createDirectories(cache.getParent());
 							Path tmp = cache.resolveSibling(cache.getFileName() + ".tmp");
 							Files.write(tmp, png);
@@ -149,6 +165,9 @@ public final class BlueMapOverview {
 					} catch (IOException e) {
 						// offline? dann die gespeicherte Kopie nehmen
 						LunaMap.LOGGER.debug("BlueMap-Uebersicht {} nicht geladen: {}", tile.key, e.toString());
+						if (tile.texture != null) {
+							return;
+						}
 					}
 				}
 				if (png == null && Files.exists(cache)) {
@@ -159,6 +178,7 @@ public final class BlueMapOverview {
 					MapSession.runOnMainThread(() -> tile.failed = false);
 					return;
 				}
+				int hash = java.util.Arrays.hashCode(png);
 				NativeImage image = NativeImage.read(png);
 				int size = Math.min(image.getWidth(), image.getHeight() / 2);
 				NativeImage top = new NativeImage(size, size, false);
@@ -174,8 +194,11 @@ public final class BlueMapOverview {
 						top.close();
 						return;
 					}
+					// neu gerenderte Kachel ersetzt die alte (passiert im Tick, nicht waehrend gezeichnet wird)
+					release(tile);
 					tile.id = LunaMap.id("bluemap/" + Integer.toHexString(forOwner.hashCode()) + "/" + tile.key.replace('/', '_'));
 					tile.texture = new DynamicTexture(() -> "Luna Map BlueMap " + tile.key, top);
+					tile.hash = hash;
 					Minecraft.getInstance().getTextureManager().register(tile.id, tile.texture);
 					tile.failed = false;
 				});

@@ -37,7 +37,7 @@ public final class BlueMapClient {
 	}
 
 	/** Ergebnis der Verbindung: die Adresse, die funktioniert hat, und ihre Karten. */
-	public record Connection(String baseUrl, List<MapInfo> maps) {
+	public record Connection(String baseUrl, List<MapInfo> maps, String liveRoot) {
 	}
 
 	/**
@@ -47,12 +47,12 @@ public final class BlueMapClient {
 	public static CompletableFuture<Connection> connect(String baseUrl) {
 		return CompletableFuture.supplyAsync(() -> {
 			try {
-				return new Connection(baseUrl, maps(baseUrl));
+				return connection(baseUrl);
 			} catch (RuntimeException first) {
 				if (baseUrl.startsWith("https://")) {
 					String http = "http://" + baseUrl.substring("https://".length());
 					try {
-						return new Connection(http, maps(http));
+						return connection(http);
 					} catch (RuntimeException ignored) {
 						// erste Fehlermeldung ist meist aussagekraeftiger
 					}
@@ -62,10 +62,11 @@ public final class BlueMapClient {
 		});
 	}
 
-	private static List<MapInfo> maps(String baseUrl) {
+	private static Connection connection(String baseUrl) {
 		{
 			try {
 				JsonObject settings = getJson(baseUrl + "settings.json");
+				String liveRoot = settings.has("liveDataRoot") ? settings.get("liveDataRoot").getAsString() : "maps";
 				String root = settings.has("mapDataRoot") ? settings.get("mapDataRoot").getAsString() : "maps";
 				List<MapInfo> maps = new ArrayList<>();
 				JsonArray ids = settings.getAsJsonArray("maps");
@@ -90,7 +91,7 @@ public final class BlueMapClient {
 					}
 					maps.add(new MapInfo(id, name, tileSize));
 				}
-				return maps;
+				return new Connection(baseUrl, maps, liveRoot);
 			} catch (IOException e) {
 				throw new RuntimeException(e.getMessage() != null ? e.getMessage() : e.toString(), e);
 			} catch (InterruptedException e) {
@@ -117,6 +118,64 @@ public final class BlueMapClient {
 			throw new IOException("HTTP " + response.statusCode());
 		}
 		return response.body();
+	}
+
+	/** Antwort einer bedingten Abfrage: body == null bei 404, unchanged bei 304. */
+	record Fetched(byte[] body, boolean unchanged, String etag, String lastModified) {
+	}
+
+	/**
+	 * Holt eine Datei nur, wenn sie sich geaendert hat (sofern der Server ETag/Last-Modified schickt;
+	 * sonst kommt sie immer und der Aufrufer vergleicht den Inhalt selbst).
+	 */
+	static Fetched getIfChanged(String url, String etag, String lastModified) throws IOException, InterruptedException {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
+				.timeout(Duration.ofSeconds(20))
+				.header("User-Agent", "LunaMap (Minecraft-Mod)")
+				.header("Cache-Control", "no-cache");
+		if (etag != null) {
+			builder.header("If-None-Match", etag);
+		}
+		if (lastModified != null) {
+			builder.header("If-Modified-Since", lastModified);
+		}
+		HttpResponse<byte[]> response = HTTP.send(builder.GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+		String newEtag = response.headers().firstValue("ETag").orElse(null);
+		String newModified = response.headers().firstValue("Last-Modified").orElse(null);
+		return switch (response.statusCode()) {
+			case 304 -> new Fetched(null, true, etag, lastModified);
+			case 404 -> new Fetched(null, false, null, null);
+			case 200 -> new Fetched(response.body(), false, newEtag, newModified);
+			default -> throw new IOException("HTTP " + response.statusCode());
+		};
+	}
+
+	/** Eigene Live-Position: Liste der Karten-IDs, auf deren Welt der Spieler gerade steht. */
+	static List<String> mapsWithPlayer(String baseUrl, String liveRoot, Iterable<String> mapIds, java.util.UUID player)
+			throws InterruptedException {
+		String want = player.toString().replace("-", "").toLowerCase(java.util.Locale.ROOT);
+		List<String> found = new ArrayList<>();
+		for (String id : mapIds) {
+			try {
+				JsonObject live = getJson(baseUrl + liveRoot + "/" + id + "/live/players.json");
+				JsonArray players = live.getAsJsonArray("players");
+				if (players == null) {
+					continue;
+				}
+				for (JsonElement element : players) {
+					JsonObject p = element.getAsJsonObject();
+					String uuid = p.has("uuid") ? p.get("uuid").getAsString().replace("-", "").toLowerCase(java.util.Locale.ROOT) : "";
+					boolean foreign = p.has("foreign") && p.get("foreign").getAsBoolean();
+					if (uuid.equals(want) && !foreign) {
+						found.add(id);
+						break;
+					}
+				}
+			} catch (IOException | RuntimeException e) {
+				// keine Live-Daten fuer diese Karte
+			}
+		}
+		return found;
 	}
 
 	/** BlueMap legt Kacheln wie x1/2/z-3 ab (jede Ziffer ein Ordner). */

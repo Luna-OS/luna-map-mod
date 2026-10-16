@@ -2,6 +2,7 @@ package luna.map.online;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,11 +20,12 @@ import net.minecraft.client.multiplayer.ClientLevel;
  * Chunks bleiben aus dem eigenen Scan, alles andere kommt aktuell vom Server.
  */
 public final class BlueMapSource {
-	private static final long REFRESH_MS = 10 * 60 * 1000L;
+	/** So oft wird nachgesehen, ob BlueMap die Kachel neu gerendert hat. */
+	private static final long REFRESH_MS = 2 * 60 * 1000L;
 	private static final long RETRY_MS = 2 * 60 * 1000L;
 	private static final int MAX_PENDING = 6;
 
-	private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2, r -> {
+	static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2, r -> {
 		Thread thread = new Thread(r, "Luna Map BlueMap");
 		thread.setDaemon(true);
 		return thread;
@@ -32,6 +34,11 @@ public final class BlueMapSource {
 	private static final AtomicInteger LOADED = new AtomicInteger();
 	private static final AtomicInteger FAILED = new AtomicInteger();
 	private static final Map<Long, Long> FETCHED = new HashMap<>();
+	/** Pro Kachel: Inhalt-Pruefsumme und ETag/Last-Modified der zuletzt uebernommenen Version. */
+	private static final Map<Long, Version> VERSIONS = new ConcurrentHashMap<>();
+
+	private record Version(int hash, String etag, String lastModified) {
+	}
 
 	private static String linkWorld;
 	private static String fetchedDimension;
@@ -50,17 +57,29 @@ public final class BlueMapSource {
 		if (!world.equals(linkWorld)) {
 			linkWorld = world;
 			link = BlueMapLink.load(MapSession.worldFolder());
-			FETCHED.clear();
+			clearFetched();
 			lastError = null;
 		}
 		return link;
+	}
+
+	private static void clearFetched() {
+		FETCHED.clear();
+		VERSIONS.clear();
+	}
+
+	/** Zuordnung wurde automatisch geaendert: speichern (geholte Kacheln gelten pro Dimension+Karte). */
+	static void saveLink() {
+		if (link != null && MapSession.world() != null) {
+			link.save(MapSession.worldFolder());
+		}
 	}
 
 	public static void setLink(BlueMapLink newLink) {
 		link();
 		link = newLink;
 		BlueMapOverview.releaseAll();
-		FETCHED.clear();
+		clearFetched();
 		lastError = null;
 		if (newLink == null) {
 			BlueMapLink.delete(MapSession.worldFolder());
@@ -96,7 +115,7 @@ public final class BlueMapSource {
 		String fetchKey = dimension + "|" + mapId;
 		if (!fetchKey.equals(fetchedDimension)) {
 			fetchedDimension = fetchKey;
-			FETCHED.clear();
+			clearFetched();
 		}
 		int tileSize = current.tileSizes.getOrDefault(mapId, 500);
 		long now = System.currentTimeMillis();
@@ -125,11 +144,19 @@ public final class BlueMapSource {
 		EXECUTOR.execute(() -> {
 			try {
 				String url = baseUrl + "maps/" + mapId + "/tiles/1/" + BlueMapClient.tilePath(tx, tz) + ".png";
-				byte[] png = BlueMapClient.getBytes(url);
-				if (png == null) {
-					LOADED.incrementAndGet();
+				Version old = VERSIONS.get(key);
+				BlueMapClient.Fetched fetched = BlueMapClient.getIfChanged(url, old == null ? null : old.etag(),
+						old == null ? null : old.lastModified());
+				byte[] png = fetched.body();
+				if (fetched.unchanged() || png == null) {
 					return;
 				}
+				int hash = java.util.Arrays.hashCode(png);
+				if (old != null && old.hash() == hash) {
+					// BlueMap hat seit dem letzten Mal nichts neu gerendert
+					return;
+				}
+				VERSIONS.put(key, new Version(hash, fetched.etag(), fetched.lastModified()));
 				int size = tileSize + 1;
 				int[] colors = new int[size * size];
 				try (NativeImage image = NativeImage.read(png)) {
@@ -150,6 +177,7 @@ public final class BlueMapSource {
 				lastError = null;
 			} catch (Exception e) {
 				lastError = String.valueOf(e.getMessage());
+				VERSIONS.remove(key);
 				MapSession.runOnMainThread(() -> FETCHED.put(key, -System.currentTimeMillis()));
 				if (FAILED.incrementAndGet() <= 3) {
 					LunaMap.LOGGER.warn("BlueMap-Kachel {},{} konnte nicht geladen werden: {}", tx, tz, e.toString());

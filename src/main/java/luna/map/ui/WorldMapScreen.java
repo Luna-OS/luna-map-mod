@@ -22,7 +22,7 @@ import net.minecraft.resources.Identifier;
 /** Vollbild-Weltkarte: ziehen zum Verschieben, Mausrad zum Zoomen, Rechtsklick fuer einen Wegpunkt. */
 public class WorldMapScreen extends Screen {
 	private static final double MIN_SCALE = 1 / 48.0;
-	private static final double MAX_SCALE = 8;
+	private static final double MAX_SCALE = 32;
 	private static double savedScale = 1;
 
 	private double centerX;
@@ -103,10 +103,13 @@ public class WorldMapScreen extends Screen {
 		double halfW = width / 2.0 / scale;
 		double halfH = height / 2.0 / scale;
 		double blocksPerPixel = 1 / scale;
-		if (BlueMapOverview.lodFor(blocksPerPixel) > 1) {
+		boolean far = BlueMapOverview.lodFor(blocksPerPixel) > 1;
+		// Nah dran liegt die BlueMap-Uebersicht als Grundlage darunter, bis die blockgenauen Kacheln da sind
+		if (far || !MapSession.underground()) {
 			BlueMapOverview.draw(graphics, centerX - halfW, centerZ - halfH, centerX + halfW, centerZ + halfH,
 					blocksPerPixel, this::screenXd, this::screenYd);
-		} else {
+		}
+		if (!far) {
 			BlueMapSource.request((int) (centerX - halfW), (int) (centerZ - halfH), (int) (centerX + halfW), (int) (centerZ + halfH));
 		}
 		// Detailstufe: nah blockgenau, weiter weg zusammengefasste Kacheln (4 bzw. 16 Bloecke pro Pixel)

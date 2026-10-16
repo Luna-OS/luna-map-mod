@@ -1,39 +1,33 @@
 package luna.map.ui;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import luna.map.LunaColors;
 import luna.map.data.MapSession;
+import luna.map.online.BlueMapAuto;
 import luna.map.online.BlueMapClient;
 import luna.map.online.BlueMapLink;
 import luna.map.online.BlueMapSource;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * BlueMap-Link fuer die aktuelle Welt bzw. den aktuellen Server eintragen. Jede Dimension bekommt
- * ihre eigene BlueMap-Karte, damit z. B. die Nether-Karte nicht in der Oberwelt landet.
+ * BlueMap-Link fuer die aktuelle Welt bzw. den aktuellen Server eintragen. Die Karten werden den
+ * Dimensionen automatisch zugeordnet (Name, dann live ueber die eigene Position auf der BlueMap).
  */
 public class OnlineMapScreen extends Screen {
-	private static final String OVERWORLD = "minecraft:overworld";
-	private static final String NETHER = "minecraft:the_nether";
-	private static final String END = "minecraft:the_end";
-	/** Platzhalter fuer "keine Karte". */
-	private static final BlueMapClient.MapInfo NONE = new BlueMapClient.MapInfo("", "–", 500);
+	private static final String OVERWORLD = BlueMapAuto.OVERWORLD;
+	private static final String NETHER = BlueMapAuto.NETHER;
+	private static final String END = BlueMapAuto.END;
 
 	private final Screen parent;
 	private EditBox url;
 	private List<BlueMapClient.MapInfo> maps = List.of();
-	/** Dimension -> gewaehlte Karte (NONE = keine). */
-	private final Map<String, BlueMapClient.MapInfo> selected = new LinkedHashMap<>();
 	private Component status = Component.empty();
 	private boolean loading;
 
@@ -48,6 +42,14 @@ public class OnlineMapScreen extends Screen {
 		String current = MapSession.dimension();
 		if (current != null && !dims.contains(current)) {
 			dims.add(current);
+		}
+		BlueMapLink link = BlueMapSource.link();
+		if (link != null) {
+			for (String dim : link.maps.keySet()) {
+				if (!dims.contains(dim)) {
+					dims.add(dim);
+				}
+			}
 		}
 		return dims;
 	}
@@ -77,30 +79,12 @@ public class OnlineMapScreen extends Screen {
 		Button remove = addRenderableWidget(Button.builder(Component.translatable("lunamap.online.remove"), b -> {
 			BlueMapSource.setLink(null);
 			maps = List.of();
-			selected.clear();
 			status = Component.translatable("lunamap.online.removed");
 			url.setValue("");
 			rebuildWidgets();
 		}).bounds(cx + 4, top + 24, 146, 20).build());
 		remove.active = link != null;
 
-		if (!maps.isEmpty()) {
-			List<BlueMapClient.MapInfo> values = new ArrayList<>();
-			values.add(NONE);
-			values.addAll(maps);
-			int y = top + 52;
-			for (String dim : dimensions()) {
-				BlueMapClient.MapInfo initial = selected.getOrDefault(dim, NONE);
-				addRenderableWidget(CycleButton.builder(
-								(BlueMapClient.MapInfo m) -> m == NONE ? Component.translatable("lunamap.online.none")
-										: Component.literal(m.name() + " (" + m.id() + ")"), initial)
-						.withValues(values)
-						.create(cx - 150, y, 300, 20, dimensionName(dim), (b, v) -> selected.put(dim, v)));
-				y += 22;
-			}
-			addRenderableWidget(Button.builder(Component.translatable("lunamap.waypoint.save"), b -> save())
-					.bounds(cx - 150, y + 4, 300, 20).build());
-		}
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
 				.bounds(cx - 100, height - 28, 200, 20).build());
 	}
@@ -135,63 +119,29 @@ public class OnlineMapScreen extends Screen {
 				status = Component.translatable("lunamap.online.failed", reason);
 			} else {
 				maps = new ArrayList<>(list);
-				selected.clear();
-				BlueMapLink link = BlueMapSource.link();
-				boolean sameServer = link != null && link.url.equals(connection.baseUrl());
-				for (String dim : dimensions()) {
-					selected.put(dim, sameServer && link.maps.containsKey(dim) ? find(link.maps.get(dim)) : guess(dim));
+				BlueMapLink old = BlueMapSource.link();
+				BlueMapLink link = new BlueMapLink();
+				link.url = connection.baseUrl();
+				link.liveRoot = connection.liveRoot();
+				for (BlueMapClient.MapInfo m : maps) {
+					link.names.put(m.id(), m.name());
+					link.tileSizes.put(m.id(), m.tileSize());
 				}
+				BlueMapAuto.assignAll(link);
+				if (old != null && old.url.equals(link.url)) {
+					// schon sicher erkannte Zuordnungen behalten
+					for (Map.Entry<String, String> entry : old.confirmed.entrySet()) {
+						if (link.names.containsKey(entry.getValue())) {
+							link.maps.put(entry.getKey(), entry.getValue());
+							link.confirmed.put(entry.getKey(), entry.getValue());
+						}
+					}
+				}
+				BlueMapSource.setLink(link);
 				status = Component.translatable("lunamap.online.found", maps.size());
 			}
 			rebuildWidgets();
 		}));
-	}
-
-	private BlueMapClient.MapInfo find(String id) {
-		for (BlueMapClient.MapInfo m : maps) {
-			if (m.id().equals(id)) {
-				return m;
-			}
-		}
-		return NONE;
-	}
-
-	/** Passende Karte zu einer Dimension raten (Name oder ID enthaelt "nether" / "end"). */
-	private BlueMapClient.MapInfo guess(String dim) {
-		String want = dim.equals(NETHER) ? "nether" : dim.equals(END) ? "end" : dim.equals(OVERWORLD) ? "" : dim.substring(dim.indexOf(':') + 1);
-		BlueMapClient.MapInfo best = NONE;
-		for (BlueMapClient.MapInfo m : maps) {
-			String text = (m.id() + " " + m.name()).toLowerCase(Locale.ROOT);
-			boolean nether = text.contains("nether") || text.contains("hell");
-			boolean end = text.matches(".*\\bend\\b.*") || text.contains("the_end") || text.contains("_end");
-			if (want.isEmpty()) {
-				if (!nether && !end) {
-					// bevorzugt die "normale" Karte, nicht z. B. eine 2D- oder Lowres-Variante
-					if (best == NONE || m.id().length() < best.id().length()) {
-						best = m;
-					}
-				}
-			} else if (want.equals("nether") ? nether : want.equals("end") ? end : text.contains(want)) {
-				if (best == NONE || m.id().length() < best.id().length()) {
-					best = m;
-				}
-			}
-		}
-		return best;
-	}
-
-	private void save() {
-		BlueMapLink link = new BlueMapLink();
-		link.url = BlueMapLink.normalize(url.getValue());
-		for (Map.Entry<String, BlueMapClient.MapInfo> entry : selected.entrySet()) {
-			BlueMapClient.MapInfo m = entry.getValue();
-			if (m != NONE) {
-				link.maps.put(entry.getKey(), m.id());
-				link.tileSizes.put(m.id(), m.tileSize());
-			}
-		}
-		BlueMapSource.setLink(link);
-		status = Component.translatable("lunamap.online.saved_all", link.maps.size());
 	}
 
 	@Override
@@ -209,16 +159,25 @@ public class OnlineMapScreen extends Screen {
 				: Component.translatable("lunamap.online.scope_server", MapSession.world());
 		graphics.centeredText(font, scope, width / 2, 22, LunaColors.LAVENDER);
 		graphics.text(font, Component.translatable("lunamap.online.url"), width / 2 - 150, top - 11, LunaColors.LAVENDER);
-		if (!maps.isEmpty()) {
-			// Kartenauswahl offen: nur die Statuszeile unter "Speichern", sonst wird es auf kleinen Fenstern eng
-			graphics.centeredText(font, status, width / 2, top + 52 + dimensions().size() * 22 + 29, LunaColors.WHITE);
-			return;
-		}
 		int y = top + 52;
 		graphics.centeredText(font, status, width / 2, y, LunaColors.WHITE);
-		if (BlueMapSource.link() != null) {
+		BlueMapLink link = BlueMapSource.link();
+		if (link != null) {
 			graphics.centeredText(font, Component.translatable("lunamap.online.tiles", BlueMapSource.loadedTiles(),
 					BlueMapSource.failedTiles()), width / 2, y + 12, LunaColors.LAVENDER);
+			// automatische Zuordnung anzeigen (kein Auswaehlen noetig)
+			int line = y + 38;
+			for (String dim : dimensions()) {
+				if (line > height - 58) {
+					break;
+				}
+				String id = link.maps.get(dim);
+				Component map = id == null ? Component.translatable("lunamap.online.none")
+						: Component.literal(link.names.getOrDefault(id, id) + (id.equals(link.confirmed.get(dim)) ? " ✔" : ""));
+				graphics.centeredText(font, Component.empty().append(dimensionName(dim)).append(" → ").append(map),
+						width / 2, line, id == null ? 0xFF8C84B8 : LunaColors.MOON);
+				line += 11;
+			}
 		}
 		String error = BlueMapSource.lastError();
 		if (error != null) {

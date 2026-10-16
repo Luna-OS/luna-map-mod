@@ -73,6 +73,7 @@ public class LunaMap implements ClientModInitializer {
 		if (MapSession.store() == null) {
 			return;
 		}
+		luna.map.online.BlueMapAuto.tick(mc);
 		if (++onlineTimer >= 100 && mc.player != null) {
 			onlineTimer = 0;
 			int x = mc.player.getBlockX();
