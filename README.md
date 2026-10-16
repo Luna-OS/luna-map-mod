@@ -11,7 +11,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 |---|---|
 | **Minimap** | Norden oben, Pfeil dreht sich mit, Koordinaten; per **Drag & Drop** verschieben und in der Größe ändern (Einstellungen → *Minimap verschieben…*) |
 | **Höhlen** | unter der Erde schaltet die Karte automatisch auf die Höhlenansicht um (pro 16er-Höhenband gespeichert) |
-| **Radar** | Items = roter Punkt, Mobs = gelber Punkt, andere Spieler = weißer Punkt |
+| **Radar** | Minimap und Weltkarte: Mobs = gelber Punkt, friedliche Mobs = grüner Punkt, Items = rote Raute, andere Spieler = ihr Skin-Kopf (auf der Weltkarte mit Name); weit über/unter dir = blasser |
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
 | **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte |
 | **Xaero-Import** | übernimmt Karten **und** Wegpunkte aus `.minecraft/xaero` – du musst nicht neu erkunden |

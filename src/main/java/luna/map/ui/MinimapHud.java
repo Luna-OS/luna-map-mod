@@ -17,9 +17,6 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.player.Player;
 
 /** Die Minimap: Norden oben, Pfeil dreht sich mit dem Spieler, Position und Groesse frei waehlbar. */
 public final class MinimapHud implements HudElement {
@@ -27,9 +24,6 @@ public final class MinimapHud implements HudElement {
 
 	private static final Identifier TEXTURE = LunaMap.id("minimap");
 	static final int MARGIN = 9;
-	private static final int ITEM = 0xFFFF5555;
-	private static final int MOB = 0xFFFFE04A;
-	private static final int PLAYER = 0xFFFFFFFF;
 
 	private DynamicTexture texture;
 	private int textureSize;
@@ -91,28 +85,23 @@ public final class MinimapHud implements HudElement {
 		double fz = player.getZ() - (pz - radius);
 		graphics.enableScissor(x0, y0, x0 + size, y0 + size);
 		if (config.radar && mc.level != null) {
-			for (Entity entity : mc.level.entitiesForRendering()) {
-				if (entity == player) {
-					continue;
+			// pro Art einmal durch, damit Spieler ueber Mobs und Mobs ueber Items liegen
+			for (RadarIcons.Kind kind : RadarIcons.Kind.values()) {
+				for (Entity entity : mc.level.entitiesForRendering()) {
+					if (entity == player || RadarIcons.kind(entity) != kind) {
+						continue;
+					}
+					double ex = entity.getX() - (px - radius);
+					double ez = entity.getZ() - (pz - radius);
+					if (ex < 0 || ez < 0 || ex >= textureSize || ez >= textureSize) {
+						continue;
+					}
+					double dy = entity.getY() - player.getY();
+					if (kind != RadarIcons.Kind.PLAYER || !RadarIcons.drawHead(graphics, entity, x0 + ex * scale, y0 + ez * scale, dy,
+							Math.max(6, Math.min(10, size / 12)))) {
+						RadarIcons.draw(graphics, kind, x0 + ex * scale, y0 + ez * scale, dy);
+					}
 				}
-				int color;
-				if (entity instanceof ItemEntity) {
-					color = ITEM;
-				} else if (entity instanceof Player) {
-					color = PLAYER;
-				} else if (entity instanceof LivingEntity) {
-					color = MOB;
-				} else {
-					continue;
-				}
-				double ex = entity.getX() - (px - radius);
-				double ez = entity.getZ() - (pz - radius);
-				if (ex < 0 || ez < 0 || ex >= textureSize || ez >= textureSize) {
-					continue;
-				}
-				int sx = x0 + (int) (ex * scale);
-				int sy = y0 + (int) (ez * scale);
-				MapDraw.dot(graphics, sx, sy, color == PLAYER ? 2 : 1, color);
 			}
 		}
 		for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
