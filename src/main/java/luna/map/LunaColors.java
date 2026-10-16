@@ -12,7 +12,9 @@ public final class LunaColors {
 	public static final int WHITE = 0xFFFBF7F0;
 
 	/** Farben, die man Wegpunkten geben kann. */
-	public static final int[] WAYPOINT = {PINK, MOON, LAVENDER, 0xFF8EE3C8, 0xFF7FC8F8, 0xFFFF7B7B, WHITE};
+	public static final int[] WAYPOINT = {
+			PINK, MOON, LAVENDER, 0xFF8EE3C8, 0xFF7FC8F8, 0xFFFF7B7B,
+			0xFFFFAA44, 0xFF66DD66, 0xFF3D7BFF, 0xFFB04CFF, WHITE, 0xFF202020};
 
 	private LunaColors() {
 	}

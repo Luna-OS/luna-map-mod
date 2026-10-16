@@ -33,6 +33,10 @@ public final class XaeroImporter {
 	private static final AtomicBoolean RUNNING = new AtomicBoolean();
 	private static volatile String status = "";
 
+	/** Eine Regionsdatei und die Dimension, in die sie gehoert (z. B. "minecraft:overworld"). */
+	private record Job(Path file, String dimension) {
+	}
+
 	/** Ein Welt- oder Server-Ordner von Xaero. */
 	public record Source(String name, Path worldMap, Path minimap, int regions, int waypoints) {
 	}
@@ -132,7 +136,7 @@ public final class XaeroImporter {
 
 	private static int importMaps(Source source, String world, Registry<Biome> biomes) {
 		BlockColors colors = new BlockColors(biomes);
-		List<Path[]> jobs = new ArrayList<>();
+		List<Job> jobs = new ArrayList<>();
 		for (Path dimDir : children(source.worldMap())) {
 			String dimension = dimensionFromWorldMap(dimDir.getFileName().toString());
 			if (dimension == null) {
@@ -144,15 +148,16 @@ public final class XaeroImporter {
 			}
 			for (Path file : children(regions)) {
 				if (REGION_FILE.matcher(file.getFileName().toString()).matches()) {
-					jobs.add(new Path[] {file, Path.of(dimension)});
+					// Dimension als Text behalten: ":" ist unter Windows in Pfaden verboten
+					jobs.add(new Job(file, dimension));
 				}
 			}
 		}
 		int done = 0;
 		Map<String, MapStore> offline = new HashMap<>();
-		for (Path[] job : jobs) {
-			Path file = job[0];
-			String dimension = job[1].toString();
+		for (Job job : jobs) {
+			Path file = job.file();
+			String dimension = job.dimension();
 			Matcher m = REGION_FILE.matcher(file.getFileName().toString());
 			if (!m.matches()) {
 				continue;

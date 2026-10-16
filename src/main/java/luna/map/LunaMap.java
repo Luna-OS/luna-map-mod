@@ -4,6 +4,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 
 import luna.map.data.MapSession;
 import luna.map.online.BlueMapSource;
+import luna.map.update.Updater;
+import net.minecraft.network.chat.Component;
 import luna.map.ui.MinimapHud;
 import luna.map.ui.WaypointEditScreen;
 import luna.map.ui.WorldMapScreen;
@@ -48,10 +50,11 @@ public class LunaMap implements ClientModInitializer {
 				MapSession.onChunkLoaded(chunk.getPos().x(), chunk.getPos().z()));
 		ClientTickEvents.END_CLIENT_TICK.register(LunaMap::tick);
 		ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> MapSession.leave());
+		ClientLifecycleEvents.CLIENT_STARTED.register(mc -> Updater.start());
 
 		// Wegpunkte in der Welt unter allem anderen HUD, die Minimap darueber
 		HudElementRegistry.attachElementBefore(VanillaHudElements.MISC_OVERLAYS, id("world_waypoints"), new WorldWaypointHud());
-		HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR, id("minimap"), new MinimapHud());
+		HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR, id("minimap"), MinimapHud.INSTANCE);
 
 		LOGGER.info("Luna Map {} geladen", FabricLoader.getInstance().getModContainer(MOD_ID)
 				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?"));
@@ -61,6 +64,12 @@ public class LunaMap implements ClientModInitializer {
 
 	private static void tick(Minecraft mc) {
 		MapSession.tick(mc);
+		if (mc.player != null) {
+			String update = Updater.takeChatMessage();
+			if (update != null) {
+				mc.player.sendSystemMessage(Component.translatable("lunamap.update.chat", update));
+			}
+		}
 		if (MapSession.store() == null) {
 			return;
 		}
