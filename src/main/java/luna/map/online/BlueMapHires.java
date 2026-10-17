@@ -39,7 +39,8 @@ public final class BlueMapHires {
 	private static final int MAX_TEXTURES = 96;
 	private static final int MAX_PENDING = 4;
 
-	private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2, r -> {
+	// ein Thread reicht und laesst dem Spiel mehr Luft
+	private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(1, r -> {
 		Thread thread = new Thread(r, "Luna Map BlueMap-Details");
 		thread.setDaemon(true);
 		thread.setPriority(Thread.MIN_PRIORITY);

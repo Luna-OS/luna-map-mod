@@ -15,7 +15,7 @@
   "lunamap.shaders.active": "Shader: Iris %s mit Shaderpack – Karten laufen normal",
   "lunamap.worldmap.title": "Luna Map – Weltkarte",
   "lunamap.worldmap.center": "Zu mir",
-  "lunamap.worldmap.hint": "Ziehen: verschieben · Mausrad: zoomen · Rechtsklick: Wegpunkt",
+  "lunamap.worldmap.hint": "Ziehen: bewegen · Rad: Zoom · Rad gedrückt: 3D · Rechtsklick: Wegpunkt",
   "lunamap.waypoints": "Wegpunkte",
   "lunamap.waypoints.empty": "Noch keine Wegpunkte in dieser Dimension",
   "lunamap.waypoint.new": "Neuer Wegpunkt",
@@ -81,5 +81,7 @@
   "lunamap.share.add": "[Hinzufügen]",
   "lunamap.share.add_hover": "Klicken, um den Wegpunkt zu speichern",
   "lunamap.share.added": "Wegpunkt „%s“ gespeichert",
-  "lunamap.share.exists": "Wegpunkt „%s“ gibt es schon"
+  "lunamap.share.exists": "Wegpunkt „%s“ gibt es schon",
+  "lunamap.worldmap.hint_3d": "3D · Rad gedrückt + ziehen: drehen & neigen · Knopf 2D: zurück",
+  "lunamap.worldmap.3d_hint": "3D-Ansicht an/aus. Mausrad gedrückt halten und ziehen: seitlich = drehen, hoch/runter = neigen"
 }

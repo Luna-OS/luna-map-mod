@@ -15,7 +15,7 @@
   "lunamap.shaders.active": "Shaders: Iris %s with shader pack – maps work normally",
   "lunamap.worldmap.title": "Luna Map – World Map",
   "lunamap.worldmap.center": "Center on me",
-  "lunamap.worldmap.hint": "Drag: move · Scroll: zoom · Right-click: waypoint",
+  "lunamap.worldmap.hint": "Drag: move · Wheel: zoom · Hold wheel: 3D · Right click: waypoint",
   "lunamap.waypoints": "Waypoints",
   "lunamap.waypoints.empty": "No waypoints in this dimension yet",
   "lunamap.waypoint.new": "New Waypoint",
@@ -81,5 +81,7 @@
   "lunamap.share.add": "[Add]",
   "lunamap.share.add_hover": "Click to save this waypoint",
   "lunamap.share.added": "Waypoint \"%s\" saved",
-  "lunamap.share.exists": "Waypoint \"%s\" already exists"
+  "lunamap.share.exists": "Waypoint \"%s\" already exists",
+  "lunamap.worldmap.hint_3d": "3D · Hold wheel + drag: rotate & tilt · 2D button: back",
+  "lunamap.worldmap.3d_hint": "Toggle 3D view. Hold the mouse wheel and drag: sideways = rotate, up/down = tilt"
 }
