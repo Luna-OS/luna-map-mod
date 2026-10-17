@@ -73,5 +73,13 @@
   "lunamap.online.scope_server": "Gilt nur für %s – Dimensionen werden automatisch erkannt",
   "lunamap.reset.button": "Karte zurücksetzen…",
   "lunamap.reset.title": "Karte von %s zurücksetzen?",
-  "lunamap.reset.message": "Die gespeicherte Karte dieser Dimension wird gelöscht und neu aufgebaut (eigener Scan, BlueMap). Wegpunkte bleiben. Xaero-Daten kannst du danach erneut importieren."
+  "lunamap.reset.message": "Die gespeicherte Karte dieser Dimension wird gelöscht und neu aufgebaut (eigener Scan, BlueMap). Wegpunkte bleiben. Xaero-Daten kannst du danach erneut importieren.",
+  "lunamap.share.button": "Teilen",
+  "lunamap.share.button_hint": "Im Chat teilen – auch Spieler mit Xaero's Minimap können ihn übernehmen",
+  "lunamap.share.received": "%s hat einen Wegpunkt geteilt:",
+  "lunamap.share.received_unknown": "Wegpunkt geteilt:",
+  "lunamap.share.add": "[Hinzufügen]",
+  "lunamap.share.add_hover": "Klicken, um den Wegpunkt zu speichern",
+  "lunamap.share.added": "Wegpunkt „%s“ gespeichert",
+  "lunamap.share.exists": "Wegpunkt „%s“ gibt es schon"
 }

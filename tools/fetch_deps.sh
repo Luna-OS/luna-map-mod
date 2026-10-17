@@ -29,7 +29,7 @@ PY2
 done
 
 # Fabric API ist ein Sammel-Jar: die benoetigten Module daraus auspacken
-for m in fabric-api-base fabric-rendering-v1 fabric-key-mapping-api-v1 fabric-lifecycle-events-v1; do
+for m in fabric-api-base fabric-rendering-v1 fabric-key-mapping-api-v1 fabric-lifecycle-events-v1 fabric-message-api-v1 fabric-command-api-v2; do
   unzip -q -o -j "$DEPS/fabric-api-0.163.0+26.3.jar" "META-INF/jars/$m-*.jar" -d "$DEPS"
 done
 echo "Abhaengigkeiten in $DEPS"

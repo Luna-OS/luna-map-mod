@@ -14,6 +14,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 | **Radar** | Minimap und Weltkarte: Mobs = gelber Punkt, friedliche Mobs = grüner Punkt, Items = rote Raute, andere Spieler = ihr Skin-Kopf (auf der Weltkarte mit Name); weit über/unter dir = blasser |
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
 | **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte |
+| **Wegpunkte teilen** | Wegpunktliste → *Teilen* schickt ihn in den Chat – im Format von Xaero's Minimap, also können Xaero-Spieler ihn übernehmen. Geteilte Wegpunkte von Xaero- oder Luna-Spielern erscheinen als Chatzeile: anklicken = speichern |
 | **Xaero-Import** | übernimmt Karten **und** Wegpunkte aus `.minecraft/xaero` – du musst nicht neu erkunden |
 | **BlueMap** | Link des Servers einfügen → Luna Map lädt die aktuelle Karte vom Server (gilt nur für diesen Server) |
 | **Shader** | getestet mit Iris + Complementary Reimagined / MakeUp; alles wird als HUD gezeichnet, keine Mixins |

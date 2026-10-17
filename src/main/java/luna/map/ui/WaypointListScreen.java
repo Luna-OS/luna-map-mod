@@ -5,6 +5,7 @@ import java.util.List;
 import luna.map.LunaColors;
 import luna.map.data.MapSession;
 import luna.map.data.Waypoint;
+import luna.map.share.WaypointShare;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -41,7 +42,15 @@ public class WaypointListScreen extends Screen {
 			int rowY = top + i * 26;
 			addRenderableWidget(Button.builder(Component.translatable("lunamap.waypoint.edit_short"),
 					b -> minecraft.setScreenAndShow(WaypointEditScreen.edit(this, waypoint)))
-					.bounds(width / 2 + 60, rowY, 70, 20).build());
+					.bounds(width / 2 + 70, rowY, 60, 20).build());
+			// im Chat teilen (Xaero-Format, Xaero-Spieler koennen ihn direkt uebernehmen)
+			Button share = addRenderableWidget(Button.builder(Component.translatable("lunamap.share.button"), b -> {
+				WaypointShare.send(waypoint);
+				onClose();
+			}).bounds(width / 2 + 16, rowY, 52, 20)
+					.tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("lunamap.share.button_hint")))
+					.build());
+			share.active = minecraft.player != null;
 		}
 		int bottom = height - 28;
 		Button prev = addRenderableWidget(Button.builder(Component.literal("<"), b -> {
@@ -86,7 +95,7 @@ public class WaypointListScreen extends Screen {
 			Waypoint waypoint = list.get(index);
 			int rowY = 40 + i * 26;
 			MapDraw.waypoint(graphics, waypoint, width / 2 - 122, rowY + 10, 4);
-			graphics.text(font, waypoint.name, width / 2 - 110, rowY + 2, LunaColors.WHITE);
+			graphics.text(font, font.plainSubstrByWidth(waypoint.name, 122), width / 2 - 110, rowY + 2, LunaColors.WHITE);
 			graphics.text(font, waypoint.x + ", " + waypoint.y + ", " + waypoint.z, width / 2 - 110, rowY + 11, LunaColors.LAVENDER);
 		}
 	}
