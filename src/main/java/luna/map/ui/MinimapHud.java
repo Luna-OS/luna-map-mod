@@ -32,6 +32,7 @@ public final class MinimapHud implements HudElement {
 	private int lastZ;
 	private int lastVersion = -1;
 	private MapStore lastStore;
+	private long lastUpdate;
 
 	private MinimapHud() {
 	}
@@ -164,9 +165,11 @@ public final class MinimapHud implements HudElement {
 			Minecraft.getInstance().getTextureManager().register(TEXTURE, texture);
 			lastX = Integer.MIN_VALUE;
 		}
-		if (px == lastX && pz == lastZ && store.version == lastVersion && store == lastStore) {
-			return;
+		boolean moved = px != lastX || pz != lastZ || store != lastStore;
+		if (!moved && (store.version == lastVersion || System.currentTimeMillis() - lastUpdate < 250)) {
+			return; // neue Scan-Daten reichen 4x pro Sekunde, das spart viel Arbeit beim Erkunden
 		}
+		lastUpdate = System.currentTimeMillis();
 		NativeImage image = texture.getPixels();
 		for (int z = 0; z < needed; z++) {
 			for (int x = 0; x < needed; x++) {

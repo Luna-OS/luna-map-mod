@@ -25,11 +25,21 @@ public class WorldMapScreen extends Screen {
 	private static final double MIN_SCALE = 1 / 48.0;
 	private static final double MAX_SCALE = 32;
 	private static double savedScale = 1;
+	/** 3D: Neigung (0 = von oben, 1 = flach) und Drehung (Bogenmass, 0 = Norden oben). */
+	private static double savedTilt;
+	private static double savedYaw;
+	/** In 3D nicht weiter herauszoomen, sonst wird es zu weit und zu teuer. */
+	private static final double MIN_SCALE_3D = 0.35;
 
 	private double centerX;
 	private double centerZ;
 	private double scale = savedScale;
+	private double tilt = savedTilt;
+	private double yaw = savedYaw;
 	private long frame;
+	private long lastInteraction;
+	private final Map3DView view3d = new Map3DView();
+	private Button toggle3d;
 
 	public WorldMapScreen() {
 		super(Component.translatable("lunamap.worldmap.title"));
@@ -53,8 +63,56 @@ public class WorldMapScreen extends Screen {
 				b -> minecraft.setScreenAndShow(new WaypointListScreen(this))).bounds(98, y, 90, 20).build());
 		addRenderableWidget(Button.builder(Component.translatable("lunamap.settings"),
 				b -> minecraft.setScreenAndShow(new LunaScreen(this))).bounds(192, y, 90, 20).build());
+		toggle3d = addRenderableWidget(Button.builder(Component.literal(in3d() ? "2D" : "3D"), b -> {
+			if (in3d()) {
+				tilt = 0;
+				yaw = 0;
+			} else {
+				tilt = 0.55;
+				scale = Math.max(scale, 1);
+			}
+			remember();
+		}).bounds(286, y, 40, 20)
+				.tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("lunamap.worldmap.3d_hint")))
+				.build());
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
 				.bounds(width - 94, y, 90, 20).build());
+	}
+
+	private boolean in3d() {
+		return tilt > 0.001 || Math.abs(yaw) > 0.001;
+	}
+
+	private void remember() {
+		savedTilt = tilt;
+		savedYaw = yaw;
+		savedScale = scale;
+		lastInteraction = System.currentTimeMillis();
+		if (toggle3d != null) {
+			toggle3d.setMessage(Component.literal(in3d() ? "2D" : "3D"));
+		}
+	}
+
+	/** Bildschirmposition eines Punktes in der Welt (2D oder 3D), null wenn nicht sichtbar. */
+	private float[] toScreen(double x, double y, double z) {
+		if (in3d()) {
+			return view3d.project(x, y, z);
+		}
+		return new float[] {(float) screenXd(x), (float) screenYd(z)};
+	}
+
+	/** Blockposition unter der Maus, null ueber dem Horizont. */
+	private double[] fromScreen(double mouseX, double mouseY) {
+		if (in3d()) {
+			return view3d.ground(mouseX, mouseY);
+		}
+		return new double[] {centerX + (mouseX - width / 2.0) / scale, centerZ + (mouseY - height / 2.0) / scale};
+	}
+
+	@Override
+	public void removed() {
+		view3d.release();
+		super.removed();
 	}
 
 	@Override
@@ -74,17 +132,30 @@ public class WorldMapScreen extends Screen {
 		if (store != null) {
 			// alles Kartige nur zwischen Kopf- und Fusszeile (sonst ragen z. B. Spielernamen hinein)
 			graphics.enableScissor(0, 16, width, height - 28);
-			drawRegions(graphics, store);
+			boolean threeD = in3d();
+			if (threeD) {
+				boolean moving = System.currentTimeMillis() - lastInteraction < 250;
+				view3d.draw(graphics, store, centerX, centerZ, scale, yaw, tilt, width, height, moving);
+				// blockgenaue BlueMap-Kacheln (mit Hoehen) fuer den Bereich holen
+				int reach = (int) Math.min(1200, height / scale * 2 + 300);
+				BlueMapSource.request((int) centerX - reach, (int) centerZ - reach, (int) centerX + reach, (int) centerZ + reach);
+			} else {
+				drawRegions(graphics, store);
+			}
 			// nah dran: BlueMap-Details mit echten Block-Texturen obendrauf
-			if (scale >= BlueMapHires.MIN_PIXELS_PER_BLOCK && !MapSession.underground()) {
+			if (!threeD && scale >= BlueMapHires.MIN_PIXELS_PER_BLOCK && !MapSession.underground()) {
 				double halfW = width / 2.0 / scale;
 				double halfH = height / 2.0 / scale;
 				BlueMapHires.draw(graphics, centerX - halfW, centerZ - halfH, centerX + halfW, centerZ + halfH,
 						this::screenXd, this::screenYd);
 			}
 			for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
-				int sx = screenX(waypoint.x + 0.5);
-				int sy = screenY(waypoint.z + 0.5);
+				float[] pos = toScreen(waypoint.x + 0.5, waypoint.y + 1, waypoint.z + 0.5);
+				if (pos == null) {
+					continue;
+				}
+				int sx = Math.round(pos[0]);
+				int sy = Math.round(pos[1]);
 				MapDraw.waypoint(graphics, waypoint, sx, sy, 3);
 				if (scale >= 0.5) {
 					graphics.centeredText(font, waypoint.name, sx, sy + 6, LunaColors.WHITE);
@@ -97,9 +168,13 @@ public class WorldMapScreen extends Screen {
 						if (entity == player || RadarIcons.kind(entity) != kind) {
 							continue;
 						}
-						double ex = screenXd(entity.getX());
-						double ez = screenYd(entity.getZ());
-						double dy = entity.getY() - player.getY();
+						float[] pos = toScreen(entity.getX(), entity.getY(), entity.getZ());
+						if (pos == null) {
+							continue;
+						}
+						double ex = pos[0];
+						double ez = pos[1];
+						double dy = threeD ? 0 : entity.getY() - player.getY();
 						if (kind == RadarIcons.Kind.PLAYER && RadarIcons.drawHead(graphics, entity, ex, ez, dy, 10)) {
 							graphics.centeredText(font, entity.getName(), (int) Math.round(ex), (int) Math.round(ez) + 8, LunaColors.WHITE);
 						} else {
@@ -109,8 +184,11 @@ public class WorldMapScreen extends Screen {
 				}
 			}
 			if (player != null) {
-				MapDraw.arrow(graphics, (float) (width / 2.0 + (player.getX() - centerX) * scale),
-						(float) (height / 2.0 + (player.getZ() - centerZ) * scale), player.getYRot(), 14);
+				float[] pos = toScreen(player.getX(), player.getY(), player.getZ());
+				if (pos != null) {
+					// in 3D dreht sich die Karte mit, der Pfeil muss das ausgleichen
+					MapDraw.arrow(graphics, pos[0], pos[1], (float) (player.getYRot() - Math.toDegrees(yaw)), 14);
+				}
 			}
 			graphics.disableScissor();
 		}
@@ -119,11 +197,13 @@ public class WorldMapScreen extends Screen {
 		graphics.centeredText(font, MapSession.underground() ? Component.translatable("lunamap.worldmap.cave_title") : title,
 				width / 2, 4, LunaColors.MOON);
 		graphics.fill(0, height - 28, width, height, 0xCC110D28);
-		int bx = (int) Math.floor(centerX + (mouseX - width / 2.0) / scale);
-		int bz = (int) Math.floor(centerZ + (mouseY - height / 2.0) / scale);
-		String coords = "X " + bx + "  Z " + bz;
-		graphics.text(font, coords, width - font.width(coords) - 6, 4, LunaColors.LAVENDER);
-		graphics.text(font, Component.translatable("lunamap.worldmap.hint"), 4, 20, 0xAAA896E8);
+		double[] under = fromScreen(mouseX, mouseY);
+		if (under != null) {
+			String coords = "X " + (int) Math.floor(under[0]) + "  Z " + (int) Math.floor(under[1]);
+			graphics.text(font, coords, width - font.width(coords) - 6, 4, LunaColors.LAVENDER);
+		}
+		String hint = Component.translatable(in3d() ? "lunamap.worldmap.hint_3d" : "lunamap.worldmap.hint").getString();
+		graphics.text(font, font.plainSubstrByWidth(hint, width - 8), 4, 20, 0xAAA896E8);
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 	}
 
@@ -164,6 +244,7 @@ public class WorldMapScreen extends Screen {
 		int rz0 = (int) Math.floor((centerZ - halfH) / MapRegion.SIZE);
 		int rz1 = (int) Math.floor((centerZ + halfH) / MapRegion.SIZE);
 		store.loadBudget = 8;
+		MapRegion.uploadBudget = 4;
 		try {
 			for (int rz = rz0; rz <= rz1; rz++) {
 				for (int rx = rx0; rx <= rx1; rx++) {
@@ -176,6 +257,7 @@ public class WorldMapScreen extends Screen {
 			}
 		} finally {
 			store.loadBudget = Integer.MAX_VALUE;
+			MapRegion.uploadBudget = Integer.MAX_VALUE;
 		}
 		store.trimTextures(frame);
 	}
@@ -211,8 +293,12 @@ public class WorldMapScreen extends Screen {
 		}
 		if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT && MapSession.store() != null && event.y() > 16
 				&& event.y() < height - 28) {
-			int bx = (int) Math.floor(centerX + (event.x() - width / 2.0) / scale);
-			int bz = (int) Math.floor(centerZ + (event.y() - height / 2.0) / scale);
+			double[] under = fromScreen(event.x(), event.y());
+			if (under == null) {
+				return false;
+			}
+			int bx = (int) Math.floor(under[0]);
+			int bz = (int) Math.floor(under[1]);
 			int by = minecraft.player != null ? minecraft.player.getBlockY() : 64;
 			minecraft.setScreenAndShow(WaypointEditScreen.create(this, bx, by, bz));
 			return true;
@@ -222,9 +308,30 @@ public class WorldMapScreen extends Screen {
 
 	@Override
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+		if (event.button() == InputConstants.MOUSE_BUTTON_MIDDLE) {
+			// Mausrad gedrueckt: seitlich ziehen dreht, hoch/runter neigt
+			yaw += dx * 0.012;
+			yaw = Math.IEEEremainder(yaw, Math.PI * 2);
+			tilt = Math.max(0, Math.min(1, tilt - dy * 0.006));
+			if (in3d()) {
+				scale = Math.max(scale, MIN_SCALE_3D);
+			}
+			remember();
+			return true;
+		}
 		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
-			centerX -= dx / scale;
-			centerZ -= dy / scale;
+			if (in3d()) {
+				// verschieben passend zur Blickrichtung; je flacher, desto mehr Boden pro Pixel nach hinten
+				double sinPitch = Math.max(0.35, Math.sin(Math.toRadians(90 - tilt * 65)));
+				double rightX = Math.cos(yaw), rightZ = Math.sin(yaw);
+				double fwdX = Math.sin(yaw), fwdZ = -Math.cos(yaw);
+				centerX -= (rightX * dx - fwdX * dy / sinPitch) / scale;
+				centerZ -= (rightZ * dx - fwdZ * dy / sinPitch) / scale;
+				lastInteraction = System.currentTimeMillis();
+			} else {
+				centerX -= dx / scale;
+				centerZ -= dy / scale;
+			}
 			return true;
 		}
 		return super.mouseDragged(event, dx, dy);
@@ -233,7 +340,11 @@ public class WorldMapScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
 		double before = scale;
-		scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * Math.pow(2, scrollY * 0.5)));
+		scale = Math.max(in3d() ? MIN_SCALE_3D : MIN_SCALE, Math.min(MAX_SCALE, scale * Math.pow(2, scrollY * 0.5)));
+		if (in3d()) {
+			remember(); // in 3D zur Bildmitte zoomen
+			return true;
+		}
 		// Punkt unter dem Mauszeiger bleibt stehen
 		double mx = mouseX - width / 2.0;
 		double my = mouseY - height / 2.0;

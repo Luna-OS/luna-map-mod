@@ -160,18 +160,26 @@ public final class BlueMapSource {
 				VERSIONS.put(key, new Version(hash, fetched.etag(), fetched.lastModified()));
 				int size = tileSize + 1;
 				int[] colors = new int[size * size];
+				short[] heights = new short[size * size];
+				java.util.Arrays.fill(heights, luna.map.data.MapRegion.NO_HEIGHT);
 				try (NativeImage image = NativeImage.read(png)) {
 					if (image.getWidth() < size || image.getHeight() < size) {
 						throw new java.io.IOException("unerwartete Kachelgroesse " + image.getWidth() + "x" + image.getHeight());
 					}
+					// untere Bildhaelfte: Hoehe als 16-Bit-Zahl in Gruen/Blau (fuer die 3D-Ansicht)
+					int meta = image.getHeight() >= 2 * size ? image.getHeight() / 2 : -1;
 					for (int z = 0; z < size; z++) {
 						for (int x = 0; x < size; x++) {
 							int argb = image.getPixel(x, z);
 							colors[z * size + x] = (argb >>> 24) == 0 ? 0 : argb | 0xFF000000;
+							if (meta > 0 && colors[z * size + x] != 0) {
+								int m = image.getPixel(x, z + meta);
+								heights[z * size + x] = (short) (((m >> 8) & 0xFF) << 8 | (m & 0xFF));
+							}
 						}
 					}
 				}
-				MapSession.runOnMainThread(() -> apply(world, dimension, tx * tileSize, tz * tileSize, size, colors));
+				MapSession.runOnMainThread(() -> apply(world, dimension, tx * tileSize, tz * tileSize, size, colors, heights));
 				if (LOADED.incrementAndGet() == 1) {
 					LunaMap.LOGGER.info("BlueMap verbunden: erste Kachel von {} geladen", baseUrl);
 				}
@@ -189,12 +197,12 @@ public final class BlueMapSource {
 		});
 	}
 
-	private static void apply(String world, String dimension, int x0, int z0, int size, int[] colors) {
+	private static void apply(String world, String dimension, int x0, int z0, int size, int[] colors, short[] heights) {
 		if (!world.equals(MapSession.world()) || !dimension.equals(MapSession.dimension()) || MapSession.store() == null) {
 			return;
 		}
 		ClientLevel level = Minecraft.getInstance().level;
-		MapSession.store().merge(x0, z0, size, size, colors, true,
+		MapSession.store().merge(x0, z0, size, size, colors, heights, true,
 				(x, z) -> level != null && ChunkScanner.loadedChunk(level, x >> 4, z >> 4) != null);
 	}
 }

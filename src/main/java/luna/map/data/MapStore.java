@@ -21,7 +21,8 @@ import luna.map.LunaMap;
 /** Alle Kartenregionen einer Dimension einer Welt, mit Speicherung auf der Platte. */
 public final class MapStore {
 	private static final int MAGIC = 0x4C554E41; // "LUNA"
-	private static final int VERSION = 1;
+	/** 1 = nur Farben, 2 = Farben + Hoehen. */
+	private static final int VERSION = 2;
 	private static final int MAX_TEXTURES = 160;
 
 	private final Path dir;
@@ -103,11 +104,30 @@ public final class MapStore {
 		region.set(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), argb);
 	}
 
+	/** Farbe und Hoehe zusammen setzen (Scan, BlueMap). */
+	void set(int blockX, int blockZ, int argb, int y) {
+		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, true);
+		region.set(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), argb);
+		region.setHeight(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), argb == 0 ? MapRegion.NO_HEIGHT : y);
+	}
+
+	/** Hoehe an einer Stelle oder MapRegion.NO_HEIGHT. */
+	public int height(int blockX, int blockZ) {
+		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, false);
+		return region == null ? MapRegion.NO_HEIGHT : region.height(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1));
+	}
+
 	/**
 	 * Uebernimmt Farben aus einer anderen Quelle (Xaero-Import, BlueMap).
 	 * overwrite=false fuellt nur noch unbekannte Stellen, keep entscheidet pro Block, ob er bleibt.
 	 */
 	public void merge(int blockX0, int blockZ0, int width, int height, int[] colors, boolean overwrite, BlockFilter keep) {
+		merge(blockX0, blockZ0, width, height, colors, null, overwrite, keep);
+	}
+
+	/** Wie oben, mit Hoehen (gleiche Anordnung wie colors, MapRegion.NO_HEIGHT = unbekannt). */
+	public void merge(int blockX0, int blockZ0, int width, int height, int[] colors, short[] heights, boolean overwrite,
+			BlockFilter keep) {
 		boolean changed = false;
 		for (int dz = 0; dz < height; dz++) {
 			for (int dx = 0; dx < width; dx++) {
@@ -123,7 +143,11 @@ public final class MapStore {
 				if (!overwrite && color(x, z) != 0) {
 					continue;
 				}
-				set(x, z, color);
+				if (heights != null && heights[dz * width + dx] != MapRegion.NO_HEIGHT) {
+					set(x, z, color, heights[dz * width + dx]);
+				} else {
+					set(x, z, color);
+				}
 				changed = true;
 			}
 		}
@@ -189,32 +213,38 @@ public final class MapStore {
 	}
 
 	private MapRegion load(int rx, int rz) {
-		int[] colors = readColors(file(rx, rz));
-		if (colors == null) {
-			return null;
-		}
 		MapRegion region = new MapRegion(rx, rz);
-		System.arraycopy(colors, 0, region.colors, 0, colors.length);
-		return region;
+		return read(file(rx, rz), region.colors, region.heights) ? region : null;
 	}
 
 	/** Farben einer Regionsdatei, oder null. Darf auch aus Hintergrund-Threads aufgerufen werden. */
 	static int[] readColors(Path file) {
+		int[] colors = new int[MapRegion.SIZE * MapRegion.SIZE];
+		return read(file, colors, null) ? colors : null;
+	}
+
+	/** Liest Farben und (ab Version 2) Hoehen; heights darf null sein. */
+	private static boolean read(Path file, int[] colors, short[] heights) {
 		if (!Files.exists(file)) {
-			return null;
+			return false;
 		}
 		try (DataInputStream in = new DataInputStream(new BufferedInputStream(new GZIPInputStream(Files.newInputStream(file)), 1 << 16))) {
-			if (in.readInt() != MAGIC || in.readInt() != VERSION) {
-				return null;
+			int version;
+			if (in.readInt() != MAGIC || (version = in.readInt()) < 1 || version > VERSION) {
+				return false;
 			}
-			int[] colors = new int[MapRegion.SIZE * MapRegion.SIZE];
 			for (int i = 0; i < colors.length; i++) {
 				colors[i] = in.readInt();
 			}
-			return colors;
+			if (version >= 2 && heights != null) {
+				for (int i = 0; i < heights.length; i++) {
+					heights[i] = in.readShort();
+				}
+			}
+			return true;
 		} catch (IOException e) {
 			LunaMap.LOGGER.warn("Kartenregion {} ist beschaedigt, wird neu erkundet", file, e);
-			return null;
+			return false;
 		}
 	}
 
@@ -270,6 +300,9 @@ public final class MapStore {
 				out.writeInt(VERSION);
 				for (int c : region.colors) {
 					out.writeInt(c);
+				}
+				for (short h : region.heights) {
+					out.writeShort(h);
 				}
 			}
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);

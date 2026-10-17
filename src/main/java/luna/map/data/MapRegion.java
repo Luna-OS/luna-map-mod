@@ -15,6 +15,11 @@ public final class MapRegion {
 	public final int x;
 	public final int z;
 	final int[] colors = new int[SIZE * SIZE];
+	/** Hoehe des obersten Blocks (fuer die 3D-Ansicht), NO_HEIGHT = unbekannt. */
+	final short[] heights = new short[SIZE * SIZE];
+	public static final short NO_HEIGHT = Short.MIN_VALUE;
+	/** Wie viele geaenderte Regionen in diesem Bild noch neu hochgeladen werden duerfen (Rest im naechsten Bild). */
+	public static int uploadBudget = Integer.MAX_VALUE;
 	boolean unsaved;
 	private boolean textureDirty = true;
 	private DynamicTexture texture;
@@ -25,6 +30,20 @@ public final class MapRegion {
 	MapRegion(int x, int z) {
 		this.x = x;
 		this.z = z;
+		java.util.Arrays.fill(heights, NO_HEIGHT);
+	}
+
+	short height(int localX, int localZ) {
+		return heights[localZ * SIZE + localX];
+	}
+
+	void setHeight(int localX, int localZ, int y) {
+		int i = localZ * SIZE + localX;
+		short value = y == NO_HEIGHT ? NO_HEIGHT : (short) Math.max(-2048, Math.min(4095, y));
+		if (heights[i] != value) {
+			heights[i] = value;
+			unsaved = true;
+		}
 	}
 
 	int get(int localX, int localZ) {
@@ -43,13 +62,15 @@ public final class MapRegion {
 	/** Textur fuer die Weltkarte, wird bei Aenderungen neu hochgeladen. Nur im Render-Thread aufrufen. */
 	public Identifier texture(String owner, long frame) {
 		lastUsed = frame;
+		boolean fresh = texture == null;
 		if (texture == null) {
 			textureId = LunaMap.id("region/" + owner + "/" + x + "_" + z);
 			texture = new DynamicTexture(() -> "Luna Map region " + x + "," + z, SIZE, SIZE, false);
 			Minecraft.getInstance().getTextureManager().register(textureId, texture);
 			textureDirty = true;
 		}
-		if (textureDirty) {
+		// neue Texturen immer fuellen (sonst steht Speichermuell drin), Aenderungen nur im Rahmen des Budgets
+		if (textureDirty && (fresh || uploadBudget-- > 0)) {
 			NativeImage image = texture.getPixels();
 			for (int lz = 0; lz < SIZE; lz++) {
 				for (int lx = 0; lx < SIZE; lx++) {

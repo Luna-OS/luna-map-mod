@@ -86,9 +86,10 @@ public final class MapSession {
 	}
 
 	public static void tick(Minecraft mc) {
-		// Hoechstens ein paar Aufgaben pro Tick, damit grosse Importe nicht ruckeln
+		// Hoechstens ein paar Aufgaben bzw. 2 ms pro Tick, damit grosse Importe und BlueMap nicht ruckeln
 		Runnable task;
-		for (int i = 0; i < 4 && (task = MAIN_THREAD.poll()) != null; i++) {
+		long start = System.nanoTime();
+		for (int i = 0; i < 8 && (i == 0 || System.nanoTime() - start < 2_000_000L) && (task = MAIN_THREAD.poll()) != null; i++) {
 			task.run();
 		}
 		ClientLevel level = mc.level;

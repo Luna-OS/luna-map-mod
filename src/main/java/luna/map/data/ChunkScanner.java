@@ -58,7 +58,7 @@ public final class ChunkScanner {
 		int cz = player.getBlockZ() >> 4;
 		int caveTop = Math.min(player.getBlockY() + 2, level.getMaxY());
 		// Chunks direkt um den Spieler regelmaessig neu lesen, damit Aenderungen auftauchen
-		if (++refreshTimer >= 20) {
+		if (++refreshTimer >= 40) {
 			refreshTimer = 0;
 			for (int dz = -REFRESH_RADIUS; dz <= REFRESH_RADIUS; dz++) {
 				for (int dx = -REFRESH_RADIUS; dx <= REFRESH_RADIUS; dx++) {
@@ -66,7 +66,7 @@ public final class ChunkScanner {
 				}
 			}
 		}
-		process(queue, CHUNKS_PER_TICK, level, store, level.dimensionType().hasCeiling(), caveTop);
+		process(queue, CHUNKS_PER_TICK, 2_000_000L, level, store, level.dimensionType().hasCeiling(), caveTop);
 
 		if (caves != null) {
 			if (caveTimer-- <= 0) {
@@ -81,14 +81,17 @@ public final class ChunkScanner {
 					}
 				}
 			}
-			process(caveQueue, CAVE_CHUNKS_PER_TICK, level, caves, true, caveTop);
+			process(caveQueue, CAVE_CHUNKS_PER_TICK, 1_000_000L, level, caves, true, caveTop);
 		}
 	}
 
-	private void process(Set<Long> pending, int budget, ClientLevel level, MapStore store, boolean fromTop, int caveTop) {
+	/** Liest Chunks, bis budget Stueck oder maxNanos Rechenzeit erreicht sind (mindestens einer), damit es nicht ruckelt. */
+	private void process(Set<Long> pending, int budget, long maxNanos, ClientLevel level, MapStore store, boolean fromTop,
+			int caveTop) {
 		int done = 0;
+		long start = System.nanoTime();
 		Iterator<Long> it = pending.iterator();
-		while (it.hasNext() && done < budget) {
+		while (it.hasNext() && done < budget && (done == 0 || System.nanoTime() - start < maxNanos)) {
 			long packed = it.next();
 			it.remove();
 			LevelChunk chunk = loadedChunk(level, ChunkPos.getX(packed), ChunkPos.getZ(packed));
@@ -124,8 +127,8 @@ public final class ChunkScanner {
 				int z = minZ + lz;
 				int y = surfaceY(level, chunk, x, z, cave, caveTop);
 				int color = y == Integer.MIN_VALUE ? 0 : color(level, chunk, x, y, z, northY == Integer.MIN_VALUE ? y : northY);
-				if (store.color(x, z) != color) {
-					store.set(x, z, color);
+				if (store.color(x, z) != color || color != 0 && store.height(x, z) != y) {
+					store.set(x, z, color, y);
 					changed = true;
 				}
 				northY = y;
