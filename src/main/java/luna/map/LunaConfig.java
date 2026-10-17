@@ -44,6 +44,8 @@ public class LunaConfig {
 	public boolean caveMode = true;
 	public boolean radar = true;
 	public boolean autoUpdate = true;
+	/** Beim Tod automatisch einen Todespunkt setzen (verschwindet, wenn man ihn erreicht). */
+	public boolean deathPoints = true;
 
 	public static LunaConfig get() {
 		if (instance == null) {

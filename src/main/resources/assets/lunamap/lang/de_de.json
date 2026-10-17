@@ -83,5 +83,11 @@
   "lunamap.share.added": "Wegpunkt „%s“ gespeichert",
   "lunamap.share.exists": "Wegpunkt „%s“ gibt es schon",
   "lunamap.worldmap.hint_3d": "3D · Rad gedrückt + ziehen: drehen & neigen · Knopf 2D: zurück",
-  "lunamap.worldmap.3d_hint": "3D-Ansicht an/aus. Mausrad gedrückt halten und ziehen: seitlich = drehen, hoch/runter = neigen"
+  "lunamap.worldmap.3d_hint": "3D-Ansicht an/aus. Mausrad gedrückt halten und ziehen: seitlich = drehen, hoch/runter = neigen",
+  "lunamap.option.death_points": "Todespunkte",
+  "lunamap.option.death_points_hint": "Beim Tod einen Totenkopf-Wegpunkt setzen. Er verschwindet, wenn du ihn erreichst; stirbst du vorher, wird er zum „Vorherigen Tod“.",
+  "lunamap.death.name": "Tod",
+  "lunamap.death.old_name": "Vorheriger Tod",
+  "lunamap.death.set": "☠ Todespunkt gesetzt: %s",
+  "lunamap.death.reached": "Todespunkt „%s“ erreicht – entfernt"
 }

@@ -65,6 +65,7 @@ public class LunaMap implements ClientModInitializer {
 
 	private static void tick(Minecraft mc) {
 		MapSession.tick(mc);
+		luna.map.data.DeathPoints.tick(mc);
 		if (mc.player != null) {
 			String update = Updater.takeChatMessage();
 			if (update != null) {

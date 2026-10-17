@@ -28,7 +28,7 @@ public class LunaScreen extends Screen {
 	}
 
 	private int top() {
-		return height / 2 - 52;
+		return height / 2 - 58;
 	}
 
 	@Override
@@ -44,21 +44,24 @@ public class LunaScreen extends Screen {
 				b -> minecraft.setScreenAndShow(new MinimapEditScreen(this))).bounds(right, top, 150, 20).build());
 		addRenderableWidget(CycleButton.builder((LunaConfig.Zoom z) -> Component.translatable("lunamap.zoom." + z.name().toLowerCase()), config.zoom)
 				.withValues(LunaConfig.Zoom.values())
-				.create(left, top + 24, 150, 20, Component.translatable("lunamap.option.zoom"), (b, v) -> config.zoom = v));
+				.create(left, top + 22, 150, 20, Component.translatable("lunamap.option.zoom"), (b, v) -> config.zoom = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.coordinates)
-				.create(right, top + 24, 150, 20, Component.translatable("lunamap.option.coordinates"), (b, v) -> config.coordinates = v));
+				.create(right, top + 22, 150, 20, Component.translatable("lunamap.option.coordinates"), (b, v) -> config.coordinates = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.caveMode)
-				.create(left, top + 48, 150, 20, Component.translatable("lunamap.option.caves"), (b, v) -> config.caveMode = v));
+				.create(left, top + 44, 150, 20, Component.translatable("lunamap.option.caves"), (b, v) -> config.caveMode = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.radar)
-				.create(right, top + 48, 150, 20, Component.translatable("lunamap.option.radar"), (b, v) -> config.radar = v));
+				.create(right, top + 44, 150, 20, Component.translatable("lunamap.option.radar"), (b, v) -> config.radar = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.worldWaypoints)
-				.create(left, top + 72, 150, 20, Component.translatable("lunamap.option.world_waypoints"), (b, v) -> config.worldWaypoints = v));
+				.create(left, top + 66, 150, 20, Component.translatable("lunamap.option.world_waypoints"), (b, v) -> config.worldWaypoints = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.autoUpdate)
-				.create(right, top + 72, 150, 20, Component.translatable("lunamap.option.auto_update"), (b, v) -> config.autoUpdate = v));
+				.create(right, top + 66, 150, 20, Component.translatable("lunamap.option.auto_update"), (b, v) -> config.autoUpdate = v));
+		addRenderableWidget(CycleButton.onOffBuilder(config.deathPoints)
+				.withTooltip(v -> net.minecraft.client.gui.components.Tooltip.create(Component.translatable("lunamap.option.death_points_hint")))
+				.create(left, top + 88, 150, 20, Component.translatable("lunamap.option.death_points"), (b, v) -> config.deathPoints = v));
 		Button xaero = addRenderableWidget(Button.builder(Component.translatable("lunamap.import.button"),
-				b -> minecraft.setScreenAndShow(new XaeroImportScreen(this))).bounds(left, top + 100, 150, 20).build());
+				b -> minecraft.setScreenAndShow(new XaeroImportScreen(this))).bounds(right, top + 88, 150, 20).build());
 		Button online = addRenderableWidget(Button.builder(Component.translatable("lunamap.online.button"),
-				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(right, top + 100, 150, 20).build());
+				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(left, top + 110, 150, 20).build());
 		xaero.active = MapSession.world() != null;
 		online.active = MapSession.world() != null;
 		Button reset = addRenderableWidget(Button.builder(Component.translatable("lunamap.reset.button"),
@@ -68,10 +71,10 @@ public class LunaScreen extends Screen {
 					}
 					minecraft.setScreenAndShow(this);
 				}, Component.translatable("lunamap.reset.title", String.valueOf(MapSession.dimension())),
-						Component.translatable("lunamap.reset.message")))).bounds(left, top + 124, 150, 20).build());
+						Component.translatable("lunamap.reset.message")))).bounds(right, top + 110, 150, 20).build());
 		reset.active = MapSession.store() != null;
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-				.bounds(right, top + 124, 150, 20).build());
+				.bounds(width / 2 - 75, top + 132, 150, 20).build());
 	}
 
 	@Override
@@ -90,10 +93,10 @@ public class LunaScreen extends Screen {
 				axoW, axoH, AXO_W, AXO_H, AXO_W, AXO_H);
 		graphics.centeredText(font, Component.literal(title.getString() + " " + Updater.currentVersion()), width / 2, axoY - 12, LunaColors.MOON);
 		graphics.centeredText(font, ShaderStatus.describe(), width / 2, top - 14, LunaColors.LAVENDER);
-		graphics.centeredText(font, Component.translatable("lunamap.keys_hint"), width / 2, top + 150, 0xAAA896E8);
+		graphics.centeredText(font, Component.translatable("lunamap.keys_hint"), width / 2, top + 156, 0xAAA896E8);
 		Component update = Updater.statusText();
 		if (update != null) {
-			graphics.centeredText(font, update, width / 2, top + 164, LunaColors.PINK);
+			graphics.centeredText(font, update, width / 2, top + 168, LunaColors.PINK);
 		}
 	}
 

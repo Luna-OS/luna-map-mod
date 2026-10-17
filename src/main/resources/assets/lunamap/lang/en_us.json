@@ -83,5 +83,11 @@
   "lunamap.share.added": "Waypoint \"%s\" saved",
   "lunamap.share.exists": "Waypoint \"%s\" already exists",
   "lunamap.worldmap.hint_3d": "3D · Hold wheel + drag: rotate & tilt · 2D button: back",
-  "lunamap.worldmap.3d_hint": "Toggle 3D view. Hold the mouse wheel and drag: sideways = rotate, up/down = tilt"
+  "lunamap.worldmap.3d_hint": "Toggle 3D view. Hold the mouse wheel and drag: sideways = rotate, up/down = tilt",
+  "lunamap.option.death_points": "Death points",
+  "lunamap.option.death_points_hint": "Set a skull waypoint when you die. It disappears once you reach it; if you die again first, it becomes the 'previous death'.",
+  "lunamap.death.name": "Death",
+  "lunamap.death.old_name": "Previous death",
+  "lunamap.death.set": "☠ Death point set: %s",
+  "lunamap.death.reached": "Reached death point \"%s\" – removed"
 }
