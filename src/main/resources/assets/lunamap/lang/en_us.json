@@ -73,5 +73,13 @@
   "lunamap.online.scope_server": "Only for %s – dimensions are detected automatically",
   "lunamap.reset.button": "Reset map…",
   "lunamap.reset.title": "Reset the map of %s?",
-  "lunamap.reset.message": "The saved map of this dimension is deleted and rebuilt (own scan, BlueMap). Waypoints stay. You can import Xaero data again afterwards."
+  "lunamap.reset.message": "The saved map of this dimension is deleted and rebuilt (own scan, BlueMap). Waypoints stay. You can import Xaero data again afterwards.",
+  "lunamap.share.button": "Share",
+  "lunamap.share.button_hint": "Share in chat – players with Xaero's Minimap can add it too",
+  "lunamap.share.received": "%s shared a waypoint:",
+  "lunamap.share.received_unknown": "Waypoint shared:",
+  "lunamap.share.add": "[Add]",
+  "lunamap.share.add_hover": "Click to save this waypoint",
+  "lunamap.share.added": "Waypoint \"%s\" saved",
+  "lunamap.share.exists": "Waypoint \"%s\" already exists"
 }

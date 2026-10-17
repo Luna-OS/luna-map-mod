@@ -49,6 +49,7 @@ public class LunaMap implements ClientModInitializer {
 		ClientChunkEvents.CHUNK_LOAD.register((level, chunk) ->
 				MapSession.onChunkLoaded(chunk.getPos().x(), chunk.getPos().z()));
 		ClientTickEvents.END_CLIENT_TICK.register(LunaMap::tick);
+		luna.map.share.WaypointShare.register();
 		ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> MapSession.leave());
 		ClientLifecycleEvents.CLIENT_STARTED.register(mc -> Updater.start());
 
