@@ -360,10 +360,17 @@ public final class XaeroImporter {
 				int y = parts[4].equals("~") ? 64 : Integer.parseInt(parts[4]);
 				int z = Integer.parseInt(parts[5]);
 				int color = xaeroColor(Integer.parseInt(parts[6]));
-				if (name.startsWith("gui.xaero_deathpoint")) {
+				String type = null;
+				if (name.startsWith("gui.xaero_deathpoint_old")) {
+					name = "Vorheriger Tod";
+					type = Waypoint.OLD_DEATH;
+				} else if (name.startsWith("gui.xaero_deathpoint")) {
 					name = "Tod";
+					type = Waypoint.DEATH;
 				}
-				result.add(new Waypoint(name, x, y, z, color, dimension));
+				Waypoint waypoint = new Waypoint(name, x, y, z, color, dimension);
+				waypoint.type = type;
+				result.add(waypoint);
 			} catch (NumberFormatException e) {
 				// kaputte Zeile ueberspringen
 			}

@@ -23,8 +23,51 @@ final class MapDraw {
 		graphics.pose().popMatrix();
 	}
 
-	/** Runder Wegpunkt-Punkt mit duennem dunklen Rand (radius 2 = klein, 3 = normal). */
+	/** Totenkopf, 7x7 Pixel: X = Knochen, alles andere frei (Augen, Nase und Zahnluecken bleiben dunkel). */
+	private static final String[] SKULL = {
+			".XXXXX.",
+			"XXXXXXX",
+			"X..X..X",
+			"X..X..X",
+			"XXX.XXX",
+			".XXXXX.",
+			".X.X.X."};
+
+	/** Todespunkt als Totenkopf; der vorherige Tod ist grau. size = Pixelgroesse in GUI-Pixeln. */
+	static void skull(GuiGraphicsExtractor graphics, int x, int y, int size, boolean old) {
+		int x0 = x - 3 * size - size / 2;
+		int y0 = y - 3 * size - size / 2;
+		int bone = old ? 0xFFA8A3B8 : 0xFFF4F1FF;
+		int dark = 0xFF110D28;
+		// dunkler Rand: das Muster in alle vier Richtungen versetzt, so werden auch Augen und Nase dunkel
+		for (int[] d : new int[][] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
+			for (int row = 0; row < SKULL.length; row++) {
+				for (int col = 0; col < SKULL[row].length(); col++) {
+					if (SKULL[row].charAt(col) == 'X') {
+						int px = x0 + (col + d[0]) * size;
+						int py = y0 + (row + d[1]) * size;
+						graphics.fill(px, py, px + size, py + size, dark);
+					}
+				}
+			}
+		}
+		for (int row = 0; row < SKULL.length; row++) {
+			for (int col = 0; col < SKULL[row].length(); col++) {
+				if (SKULL[row].charAt(col) == 'X') {
+					int px = x0 + col * size;
+					int py = y0 + row * size;
+					graphics.fill(px, py, px + size, py + size, bone);
+				}
+			}
+		}
+	}
+
+	/** Runder Wegpunkt-Punkt mit duennem dunklen Rand (radius 2 = klein, 3 = normal); Todespunkte als Totenkopf. */
 	static void waypoint(GuiGraphicsExtractor graphics, Waypoint waypoint, int x, int y, int radius) {
+		if (waypoint.isDeath()) {
+			skull(graphics, x, y, radius >= 4 ? 2 : 1, waypoint.isOldDeath());
+			return;
+		}
 		dot(graphics, x, y, radius + 1, SHADOW);
 		dot(graphics, x, y, radius, 0xFF000000 | waypoint.color);
 		// kleiner Glanzpunkt, damit auch dunkle Farben (z. B. Schwarz) sichtbar bleiben

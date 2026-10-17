@@ -15,6 +15,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
 | **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte |
 | **3D-Ansicht** | Weltkarte: Knopf **3D/2D** oder Mausrad gedrückt halten und ziehen (seitlich = drehen, hoch/runter = neigen). Zeigt Berge, Bäume und Täler mit echter Höhe (aus eigenem Scan und BlueMap); wird nur neu gerechnet, wenn sich etwas ändert |
+| **Todespunkte** | Beim Tod erscheint „Tod“ mit Totenkopf (Minimap, Weltkarte, in der Welt). Erreichst du ihn, verschwindet er. Stirbst du vorher nochmal, wird der alte zu „Vorheriger Tod“ (grauer Totenkopf). In den Einstellungen abschaltbar |
 | **Wegpunkte teilen** | Wegpunktliste → *Teilen* schickt ihn in den Chat – im Format von Xaero's Minimap, also können Xaero-Spieler ihn übernehmen. Geteilte Wegpunkte von Xaero- oder Luna-Spielern erscheinen als Chatzeile: anklicken = speichern |
 | **Xaero-Import** | übernimmt Karten **und** Wegpunkte aus `.minecraft/xaero` – du musst nicht neu erkunden |
 | **BlueMap** | Link des Servers einfügen → Luna Map lädt die aktuelle Karte vom Server (gilt nur für diesen Server) |

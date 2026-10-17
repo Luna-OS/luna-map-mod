@@ -52,6 +52,11 @@ public final class WaypointStore {
 		return result;
 	}
 
+	/** Alle Wegpunkte aller Dimensionen (Kopie). */
+	public List<Waypoint> all() {
+		return new ArrayList<>(waypoints);
+	}
+
 	public int count(String dimension) {
 		return in(dimension).size();
 	}
