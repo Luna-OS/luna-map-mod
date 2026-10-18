@@ -52,6 +52,13 @@ public final class WaypointStore {
 		return result;
 	}
 
+	/** Nur die nicht ausgeblendeten Wegpunkte einer Dimension (fuer Welt, Minimap und Weltkarte). */
+	public List<Waypoint> visible(String dimension) {
+		List<Waypoint> result = in(dimension);
+		result.removeIf(w -> w.hidden);
+		return result;
+	}
+
 	/** Alle Wegpunkte aller Dimensionen (Kopie). */
 	public List<Waypoint> all() {
 		return new ArrayList<>(waypoints);

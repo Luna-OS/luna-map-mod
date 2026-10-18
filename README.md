@@ -11,9 +11,9 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 |---|---|
 | **Minimap** | Norden oben, Pfeil dreht sich mit, Koordinaten; per **Drag & Drop** verschieben und in der Größe ändern (Einstellungen → *Minimap verschieben…*) |
 | **Höhlen** | unter der Erde schaltet die Karte automatisch auf die Höhlenansicht um (pro 16er-Höhenband gespeichert) |
-| **Radar** | Minimap und Weltkarte: Mobs = gelber Punkt, friedliche Mobs = grüner Punkt, Items = rote Raute, andere Spieler = ihr Skin-Kopf (auf der Weltkarte mit Name); weit über/unter dir = blasser |
+| **Radar** (`Tab`) | Mit `Tab` an/aus. Minimap und Weltkarte: Mobs = gelber Punkt, friedliche Mobs = grüner Punkt, Items = rote Raute, andere Spieler = ihr Skin-Kopf (auf der Weltkarte mit Name); weit über/unter dir = blasser |
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
-| **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte. In der Welt nur als Punkt – Name und Entfernung erscheinen, wenn du draufschaust |
+| **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte. In der Welt als kleines Schild mit den ersten zwei Buchstaben – Name und Entfernung erscheinen, wenn du draufschaust. In der Liste mit ●/○ einzeln ausblenden |
 | **3D-Ansicht** | Weltkarte: Knopf **3D/2D** oder Mausrad gedrückt halten und ziehen (seitlich = drehen, hoch/runter = neigen). Zeigt Berge, Bäume und Täler mit echter Höhe (aus eigenem Scan und BlueMap); wird nur neu gerechnet, wenn sich etwas ändert |
 | **Todespunkte** | Beim Tod erscheint „Tod“ mit Totenkopf (Minimap, Weltkarte, in der Welt). Erreichst du ihn, verschwindet er. Stirbst du vorher nochmal, wird der alte zu „Vorheriger Tod“ (grauer Totenkopf). In den Einstellungen abschaltbar |
 | **Wegpunkte teilen** | Wegpunktliste → *Teilen* schickt ihn in den Chat – im Format von Xaero's Minimap, also können Xaero-Spieler ihn übernehmen. Geteilte Wegpunkte von Xaero- oder Luna-Spielern erscheinen als Chatzeile: anklicken = speichern |
@@ -22,7 +22,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 | **Shader** | getestet mit Iris + Complementary Reimagined / MakeUp; alles wird als HUD gezeichnet, keine Mixins |
 | **Auto-Update** | prüft beim Start die [Releases](https://github.com/Luna-OS/luna-map-mod/releases), lädt eine neuere Version herunter und tauscht sie beim Beenden von Minecraft aus (abschaltbar) |
 
-`N` schaltet die Minimap an/aus. Alle Tasten lassen sich unter *Optionen → Steuerung → Luna Map* ändern.
+`N` schaltet die Minimap an/aus, `Tab` das Radar (Mobs, Items, Spieler). Alle Tasten lassen sich unter *Optionen → Steuerung → Luna Map* ändern.
 
 ## Installation
 

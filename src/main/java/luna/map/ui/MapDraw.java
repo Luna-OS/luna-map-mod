@@ -62,6 +62,38 @@ final class MapDraw {
 		}
 	}
 
+	/**
+	 * Wegpunkt als kleines Schild mit den ersten zwei Buchstaben (in der Welt, auf der Weltkarte, in der Liste);
+	 * Todespunkte als Totenkopf.
+	 */
+	static void badge(GuiGraphicsExtractor graphics, net.minecraft.client.gui.Font font, Waypoint waypoint, int x, int y,
+			boolean big) {
+		if (waypoint.isDeath()) {
+			skull(graphics, x, y, big ? 2 : 1, waypoint.isOldDeath());
+			return;
+		}
+		String text = waypoint.initials();
+		int color = 0xFF000000 | waypoint.color;
+		int w = font.width(text) + 5;
+		int h = 11;
+		int x0 = x - w / 2;
+		int y0 = y - h / 2;
+		// dunkler, abgerundeter Rand
+		graphics.fill(x0, y0 - 1, x0 + w, y0 + h + 1, SHADOW);
+		graphics.fill(x0 - 1, y0, x0 + w + 1, y0 + h, SHADOW);
+		graphics.fill(x0, y0, x0 + w, y0 + h, color);
+		// oben ein Hauch heller, damit es nach Luna-Knopf aussieht
+		graphics.fill(x0 + 1, y0 + 1, x0 + w - 1, y0 + 2, 0x40FFFFFF);
+		if (big) {
+			graphics.fill(x0 - 2, y0 - 2, x0 + w + 2, y0 - 1, 0xC0F4F1FF);
+			graphics.fill(x0 - 2, y0 + h + 1, x0 + w + 2, y0 + h + 2, 0xC0F4F1FF);
+		}
+		// helle Farben bekommen dunkle Schrift
+		int r = (color >> 16) & 0xFF, g = (color >> 8) & 0xFF, b = color & 0xFF;
+		boolean light = r * 299 + g * 587 + b * 114 > 150_000;
+		graphics.text(font, text, x0 + 3, y0 + 2, light ? 0xFF1A1438 : 0xFFFFFFFF, !light);
+	}
+
 	/** Runder Wegpunkt-Punkt mit duennem dunklen Rand (radius 2 = klein, 3 = normal); Todespunkte als Totenkopf. */
 	static void waypoint(GuiGraphicsExtractor graphics, Waypoint waypoint, int x, int y, int radius) {
 		if (waypoint.isDeath()) {

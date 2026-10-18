@@ -51,6 +51,15 @@ public class WaypointListScreen extends Screen {
 					.tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("lunamap.share.button_hint")))
 					.build());
 			share.active = minecraft.player != null;
+			// ein-/ausblenden: ausgeblendete Wegpunkte erscheinen nur noch hier in der Liste
+			addRenderableWidget(Button.builder(Component.literal(waypoint.hidden ? "○" : "●"), b -> {
+				waypoint.hidden = !waypoint.hidden;
+				MapSession.waypoints().save();
+				rebuildWidgets();
+			}).bounds(width / 2 - 8, rowY, 20, 20)
+					.tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable(
+							waypoint.hidden ? "lunamap.waypoint.show" : "lunamap.waypoint.hide")))
+					.build());
 		}
 		int bottom = height - 28;
 		Button prev = addRenderableWidget(Button.builder(Component.literal("<"), b -> {
@@ -94,9 +103,12 @@ public class WaypointListScreen extends Screen {
 			}
 			Waypoint waypoint = list.get(index);
 			int rowY = 40 + i * 26;
-			MapDraw.waypoint(graphics, waypoint, width / 2 - 122, rowY + 10, 4);
-			graphics.text(font, font.plainSubstrByWidth(waypoint.name, 122), width / 2 - 110, rowY + 2, LunaColors.WHITE);
-			graphics.text(font, waypoint.x + ", " + waypoint.y + ", " + waypoint.z, width / 2 - 110, rowY + 11, LunaColors.LAVENDER);
+			MapDraw.badge(graphics, font, waypoint, width / 2 - 126, rowY + 10, false);
+			int nameColor = waypoint.hidden ? 0xFF8C84B8 : LunaColors.WHITE;
+			graphics.text(font, font.plainSubstrByWidth(waypoint.name, 100), width / 2 - 112, rowY + 2, nameColor);
+			String coords = waypoint.x + ", " + waypoint.y + ", " + waypoint.z;
+			graphics.text(font, waypoint.hidden ? Component.translatable("lunamap.waypoint.hidden_coords", coords).getString() : coords,
+					width / 2 - 112, rowY + 11, waypoint.hidden ? 0xFF6E6896 : LunaColors.LAVENDER);
 		}
 	}
 
