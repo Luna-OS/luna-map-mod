@@ -16,9 +16,12 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Wegpunkte in der Welt. Die Position wird selbst aus Kamera-Vektoren und Sichtfeld berechnet
- * und als HUD gezeichnet - dadurch unabhaengig von Shaderpacks (Iris) und deren Projektion.
+ * und als HUD gezeichnet - dadurch unabhaengig von Shaderpacks (Iris) und deren Projektion. Name und Entfernung
+ * erscheinen nur beim Wegpunkt, auf den man schaut, damit sich nichts ueberlappt.
  */
 public final class WorldWaypointHud implements HudElement {
+	/** So nah (GUI-Pixel) am Fadenkreuz muss ein Wegpunkt sein, damit sein Name erscheint. */
+	private static final double FOCUS_RADIUS = 28;
 	private final Vector3f delta = new Vector3f();
 
 	@Override
@@ -39,6 +42,10 @@ public final class WorldWaypointHud implements HudElement {
 		int height = mc.getWindow().getGuiScaledHeight();
 		float focal = (float) (height / 2.0 / Math.tan(Math.toRadians(camera.getFov()) / 2.0));
 
+		// erst alle Punkte zeichnen; Name und Entfernung nur fuer den, auf den man gerade schaut (naechster zum Fadenkreuz)
+		Waypoint focused = null;
+		int focusX = 0, focusY = 0, focusDistance = 0;
+		double best = FOCUS_RADIUS * FOCUS_RADIUS;
 		for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
 			delta.set((float) (waypoint.x + 0.5 - cam.x), (float) (waypoint.y + 1.0 - cam.y), (float) (waypoint.z + 0.5 - cam.z));
 			float depth = delta.dot(forward);
@@ -50,12 +57,25 @@ public final class WorldWaypointHud implements HudElement {
 			if (sx < -50 || sx > width + 50 || sy < -50 || sy > height + 50) {
 				continue;
 			}
-			int distance = (int) Math.round(Math.sqrt(delta.lengthSquared()));
 			MapDraw.waypoint(graphics, waypoint, sx, sy, 3);
-			String label = waypoint.name + " (" + distance + " m)";
+			double cx = sx - width / 2.0;
+			double cy = sy - height / 2.0;
+			double centerDistance = cx * cx + cy * cy;
+			if (centerDistance < best) {
+				best = centerDistance;
+				focused = waypoint;
+				focusX = sx;
+				focusY = sy;
+				focusDistance = (int) Math.round(Math.sqrt(delta.lengthSquared()));
+			}
+		}
+		if (focused != null) {
+			// angeschauter Punkt etwas groesser, darunter Name und Entfernung
+			MapDraw.waypoint(graphics, focused, focusX, focusY, 4);
+			String label = focused.name + " (" + focusDistance + " m)";
 			int w = mc.font.width(label);
-			graphics.fill(sx - w / 2 - 2, sy + 6, sx + w / 2 + 2, sy + 17, 0x99110D28);
-			graphics.centeredText(mc.font, label, sx, sy + 8, LunaColors.WHITE);
+			graphics.fill(focusX - w / 2 - 3, focusY + 7, focusX + w / 2 + 3, focusY + 19, 0xB0110D28);
+			graphics.centeredText(mc.font, label, focusX, focusY + 9, LunaColors.WHITE);
 		}
 	}
 }
