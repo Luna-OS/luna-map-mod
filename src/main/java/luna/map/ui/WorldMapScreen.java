@@ -178,7 +178,7 @@ public class WorldMapScreen extends Screen {
 						if (kind == RadarIcons.Kind.PLAYER && RadarIcons.drawHead(graphics, entity, ex, ez, dy, 10)) {
 							graphics.centeredText(font, entity.getName(), (int) Math.round(ex), (int) Math.round(ez) + 8, LunaColors.WHITE);
 						} else {
-							RadarIcons.draw(graphics, kind, ex, ez, dy);
+							RadarIcons.drawMob(graphics, kind, entity, ex, ez, dy, 8);
 						}
 					}
 				}

@@ -104,6 +104,16 @@ final class RadarIcons {
 		return true;
 	}
 
+	/** Mobs als Kopf mit Rahmen in ihrer Radarfarbe (gelb feindlich, gruen friedlich), sonst der normale Punkt. */
+	static void drawMob(GuiGraphicsExtractor graphics, Kind kind, Entity entity, double x, double y, double dy, int size) {
+		float alpha = Math.abs(dy) > 12 ? 0.6f : Math.abs(dy) > 5 ? 0.85f : 1f;
+		if ((kind == Kind.MOB || kind == Kind.FRIENDLY)
+				&& MobHeads.draw(graphics, entity, x, y, size, 0xFF000000 | kind.rgb, alpha)) {
+			return;
+		}
+		draw(graphics, kind, x, y, dy);
+	}
+
 	private static int ensureTexture() {
 		int scale = Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
 		if (texture != null && textureScale == scale) {
