@@ -46,6 +46,8 @@ public class LunaConfig {
 	public boolean autoUpdate = true;
 	/** Beim Tod automatisch einen Todespunkt setzen (verschwindet, wenn man ihn erreicht). */
 	public boolean deathPoints = true;
+	/** Minimap dreht sich mit der Blickrichtung (vorne ist immer oben). */
+	public boolean rotateMinimap = true;
 
 	public static LunaConfig get() {
 		if (instance == null) {

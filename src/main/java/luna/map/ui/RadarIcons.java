@@ -108,7 +108,7 @@ final class RadarIcons {
 	static void drawMob(GuiGraphicsExtractor graphics, Kind kind, Entity entity, double x, double y, double dy, int size) {
 		float alpha = Math.abs(dy) > 12 ? 0.6f : Math.abs(dy) > 5 ? 0.85f : 1f;
 		if ((kind == Kind.MOB || kind == Kind.FRIENDLY)
-				&& MobHeads.draw(graphics, entity, x, y, size, 0xFF000000 | kind.rgb, alpha)) {
+				&& MobHeads.draw(graphics, entity, x, y, size + 2, alpha)) {
 			return;
 		}
 		draw(graphics, kind, x, y, dy);
