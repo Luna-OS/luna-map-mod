@@ -59,9 +59,11 @@ public class LunaScreen extends Screen {
 				.withTooltip(v -> net.minecraft.client.gui.components.Tooltip.create(Component.translatable("lunamap.option.death_points_hint")))
 				.create(left, top + 88, 150, 20, Component.translatable("lunamap.option.death_points"), (b, v) -> config.deathPoints = v));
 		Button xaero = addRenderableWidget(Button.builder(Component.translatable("lunamap.import.button"),
-				b -> minecraft.setScreenAndShow(new XaeroImportScreen(this))).bounds(right, top + 88, 150, 20).build());
+				b -> minecraft.setScreenAndShow(new XaeroImportScreen(this))).bounds(left, top + 110, 150, 20).build());
 		Button online = addRenderableWidget(Button.builder(Component.translatable("lunamap.online.button"),
-				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(left, top + 110, 150, 20).build());
+				b -> minecraft.setScreenAndShow(new OnlineMapScreen(this))).bounds(right, top + 110, 150, 20).build());
+		addRenderableWidget(CycleButton.onOffBuilder(config.rotateMinimap)
+				.create(right, top + 88, 150, 20, Component.translatable("lunamap.option.rotate"), (b, v) -> config.rotateMinimap = v));
 		xaero.active = MapSession.world() != null;
 		online.active = MapSession.world() != null;
 		Button reset = addRenderableWidget(Button.builder(Component.translatable("lunamap.reset.button"),
@@ -71,10 +73,10 @@ public class LunaScreen extends Screen {
 					}
 					minecraft.setScreenAndShow(this);
 				}, Component.translatable("lunamap.reset.title", String.valueOf(MapSession.dimension())),
-						Component.translatable("lunamap.reset.message")))).bounds(right, top + 110, 150, 20).build());
+						Component.translatable("lunamap.reset.message")))).bounds(left, top + 132, 150, 20).build());
 		reset.active = MapSession.store() != null;
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-				.bounds(width / 2 - 75, top + 132, 150, 20).build());
+				.bounds(right, top + 132, 150, 20).build());
 	}
 
 	@Override

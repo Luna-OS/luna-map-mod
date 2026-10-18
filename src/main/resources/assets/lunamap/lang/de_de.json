@@ -95,5 +95,10 @@
   "lunamap.radar.off": "Radar aus",
   "lunamap.waypoint.hide": "Ausblenden (nur noch hier in der Liste)",
   "lunamap.waypoint.show": "Wieder einblenden",
-  "lunamap.waypoint.hidden_coords": "%s · ausgeblendet"
+  "lunamap.waypoint.hidden_coords": "%s · ausgeblendet",
+  "lunamap.option.rotate": "Minimap drehen",
+  "lunamap.dir.n": "N",
+  "lunamap.dir.e": "O",
+  "lunamap.dir.s": "S",
+  "lunamap.dir.w": "W"
 }
