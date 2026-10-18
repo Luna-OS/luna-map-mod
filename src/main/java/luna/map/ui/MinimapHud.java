@@ -109,7 +109,8 @@ public final class MinimapHud implements HudElement {
 					double dy = entity.getY() - player.getY();
 					if (kind != RadarIcons.Kind.PLAYER || !RadarIcons.drawHead(graphics, entity, x0 + ex * scale, y0 + ez * scale, dy,
 							Math.max(6, Math.min(10, size / 12)))) {
-						RadarIcons.draw(graphics, kind, x0 + ex * scale, y0 + ez * scale, dy);
+						RadarIcons.drawMob(graphics, kind, entity, x0 + ex * scale, y0 + ez * scale, dy,
+								Math.max(5, Math.min(8, size / 14)));
 					}
 				}
 			}
