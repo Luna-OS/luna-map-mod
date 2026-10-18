@@ -114,7 +114,7 @@ public final class MinimapHud implements HudElement {
 				}
 			}
 		}
-		for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
+		for (Waypoint waypoint : MapSession.waypoints().visible(MapSession.dimension())) {
 			float wx = (waypoint.x - (px - radius) + 0.5f) * scale;
 			float wz = (waypoint.z - (pz - radius) + 0.5f) * scale;
 			boolean inside = wx >= 0 && wz >= 0 && wx < size && wz < size;

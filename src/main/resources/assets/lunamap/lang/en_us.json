@@ -9,7 +9,7 @@
   "lunamap.zoom.near": "Near",
   "lunamap.zoom.medium": "Medium",
   "lunamap.zoom.far": "Far",
-  "lunamap.keys_hint": "J: world map · B: waypoint · N: toggle minimap",
+  "lunamap.keys_hint": "J: world map · B: waypoint · N: minimap · Tab: radar",
   "lunamap.shaders.no_iris": "Shaders: Iris not installed",
   "lunamap.shaders.inactive": "Shaders: Iris %s, no shader pack active",
   "lunamap.shaders.active": "Shaders: Iris %s with shader pack – maps work normally",
@@ -89,5 +89,11 @@
   "lunamap.death.name": "Death",
   "lunamap.death.old_name": "Previous death",
   "lunamap.death.set": "☠ Death point set: %s",
-  "lunamap.death.reached": "Reached death point \"%s\" – removed"
+  "lunamap.death.reached": "Reached death point \"%s\" – removed",
+  "key.lunamap.toggle_radar": "Toggle mobs/radar",
+  "lunamap.radar.on": "Radar: showing mobs, items and players",
+  "lunamap.radar.off": "Radar off",
+  "lunamap.waypoint.hide": "Hide (only listed here)",
+  "lunamap.waypoint.show": "Show again",
+  "lunamap.waypoint.hidden_coords": "%s · hidden"
 }

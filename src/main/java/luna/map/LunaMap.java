@@ -31,6 +31,7 @@ public class LunaMap implements ClientModInitializer {
 	private static KeyMapping worldMapKey;
 	private static KeyMapping waypointKey;
 	private static KeyMapping minimapKey;
+	private static KeyMapping radarKey;
 
 	public static Identifier id(String path) {
 		return Identifier.fromNamespaceAndPath(MOD_ID, path);
@@ -45,6 +46,9 @@ public class LunaMap implements ClientModInitializer {
 				new KeyMapping("key.lunamap.new_waypoint", InputConstants.KEY_B, category));
 		minimapKey = KeyMappingHelper.registerKeyMapping(
 				new KeyMapping("key.lunamap.toggle_minimap", InputConstants.KEY_N, category));
+		// Tab teilt sich die Taste mit der Spielerliste, Minecraft erlaubt mehrere Belegungen pro Taste
+		radarKey = KeyMappingHelper.registerKeyMapping(
+				new KeyMapping("key.lunamap.toggle_radar", InputConstants.KEY_TAB, category));
 
 		ClientChunkEvents.CHUNK_LOAD.register((level, chunk) ->
 				MapSession.onChunkLoaded(chunk.getPos().x(), chunk.getPos().z()));
@@ -97,6 +101,14 @@ public class LunaMap implements ClientModInitializer {
 			LunaConfig config = LunaConfig.get();
 			config.minimap = !config.minimap;
 			config.save();
+		}
+		while (radarKey.consumeClick()) {
+			LunaConfig config = LunaConfig.get();
+			config.radar = !config.radar;
+			config.save();
+			if (mc.player != null) {
+				mc.player.sendOverlayMessage(Component.translatable(config.radar ? "lunamap.radar.on" : "lunamap.radar.off"));
+			}
 		}
 	}
 }

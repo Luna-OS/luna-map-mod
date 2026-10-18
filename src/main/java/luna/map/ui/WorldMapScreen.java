@@ -149,16 +149,16 @@ public class WorldMapScreen extends Screen {
 				BlueMapHires.draw(graphics, centerX - halfW, centerZ - halfH, centerX + halfW, centerZ + halfH,
 						this::screenXd, this::screenYd);
 			}
-			for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
+			for (Waypoint waypoint : MapSession.waypoints().visible(MapSession.dimension())) {
 				float[] pos = toScreen(waypoint.x + 0.5, waypoint.y + 1, waypoint.z + 0.5);
 				if (pos == null) {
 					continue;
 				}
 				int sx = Math.round(pos[0]);
 				int sy = Math.round(pos[1]);
-				MapDraw.waypoint(graphics, waypoint, sx, sy, 3);
+				MapDraw.badge(graphics, font, waypoint, sx, sy, false);
 				if (scale >= 0.5) {
-					graphics.centeredText(font, waypoint.name, sx, sy + 6, LunaColors.WHITE);
+					graphics.centeredText(font, waypoint.name, sx, sy + 8, LunaColors.WHITE);
 				}
 			}
 			LocalPlayer player = minecraft.player;

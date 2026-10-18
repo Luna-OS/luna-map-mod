@@ -46,7 +46,7 @@ public final class WorldWaypointHud implements HudElement {
 		Waypoint focused = null;
 		int focusX = 0, focusY = 0, focusDistance = 0;
 		double best = FOCUS_RADIUS * FOCUS_RADIUS;
-		for (Waypoint waypoint : MapSession.waypoints().in(MapSession.dimension())) {
+		for (Waypoint waypoint : MapSession.waypoints().visible(MapSession.dimension())) {
 			delta.set((float) (waypoint.x + 0.5 - cam.x), (float) (waypoint.y + 1.0 - cam.y), (float) (waypoint.z + 0.5 - cam.z));
 			float depth = delta.dot(forward);
 			if (depth < 0.1f) {
@@ -57,7 +57,7 @@ public final class WorldWaypointHud implements HudElement {
 			if (sx < -50 || sx > width + 50 || sy < -50 || sy > height + 50) {
 				continue;
 			}
-			MapDraw.waypoint(graphics, waypoint, sx, sy, 3);
+			MapDraw.badge(graphics, mc.font, waypoint, sx, sy, false);
 			double cx = sx - width / 2.0;
 			double cy = sy - height / 2.0;
 			double centerDistance = cx * cx + cy * cy;
@@ -71,7 +71,7 @@ public final class WorldWaypointHud implements HudElement {
 		}
 		if (focused != null) {
 			// angeschauter Punkt etwas groesser, darunter Name und Entfernung
-			MapDraw.waypoint(graphics, focused, focusX, focusY, 4);
+			MapDraw.badge(graphics, mc.font, focused, focusX, focusY, true);
 			String label = focused.name + " (" + focusDistance + " m)";
 			int w = mc.font.width(label);
 			graphics.fill(focusX - w / 2 - 3, focusY + 7, focusX + w / 2 + 3, focusY + 19, 0xB0110D28);
