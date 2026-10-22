@@ -91,7 +91,9 @@ public class WaypointListScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-		graphics.centeredText(font, title, width / 2, 16, LunaColors.MOON);
+		// welche Dimension: Oberwelt, Nether, End oder eine eigene (z. B. aus einem Datapack)
+		graphics.centeredText(font, Component.empty().append(title).append(" – ").append(luna.map.data.Dimensions.name(MapSession.dimension())),
+				width / 2, 16, LunaColors.MOON);
 		List<Waypoint> list = waypoints();
 		if (list.isEmpty()) {
 			graphics.centeredText(font, Component.translatable("lunamap.waypoints.empty"), width / 2, 60, LunaColors.LAVENDER);

@@ -81,6 +81,7 @@
   "lunamap.share.add": "[Hinzufügen]",
   "lunamap.share.add_hover": "Klicken, um den Wegpunkt zu speichern",
   "lunamap.share.added": "Wegpunkt „%s“ gespeichert",
+  "lunamap.share.added_other": "Wegpunkt „%s“ gespeichert (%s) – erscheint, sobald du dort bist",
   "lunamap.share.exists": "Wegpunkt „%s“ gibt es schon",
   "lunamap.worldmap.hint_3d": "3D · Rad gedrückt + ziehen: drehen & neigen · Knopf 2D: zurück",
   "lunamap.worldmap.3d_hint": "3D-Ansicht an/aus. Mausrad gedrückt halten und ziehen: seitlich = drehen, hoch/runter = neigen",

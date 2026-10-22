@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import luna.map.LunaMap;
+import luna.map.data.Dimensions;
 import luna.map.data.MapSession;
 import net.minecraft.client.Minecraft;
 
@@ -16,9 +17,9 @@ import net.minecraft.client.Minecraft;
  * dann sicher ueber die Live-Daten von BlueMap (auf welcher Karte steht der eigene Spieler gerade?).
  */
 public final class BlueMapAuto {
-	public static final String OVERWORLD = "minecraft:overworld";
-	public static final String NETHER = "minecraft:the_nether";
-	public static final String END = "minecraft:the_end";
+	public static final String OVERWORLD = Dimensions.OVERWORLD;
+	public static final String NETHER = Dimensions.NETHER;
+	public static final String END = Dimensions.END;
 
 	/** Erste Pruefung kurz nach dem Betreten, dann noch ein paar Versuche, falls BlueMap hinterherhinkt. */
 	private static final int FIRST_DELAY = 60;
@@ -38,15 +39,22 @@ public final class BlueMapAuto {
 		String want = dim.equals(NETHER) ? "nether" : dim.equals(END) ? "end" : dim.equals(OVERWORLD) ? ""
 				: dim.substring(dim.indexOf(':') + 1).toLowerCase(Locale.ROOT);
 		String best = null;
+		int bestRank = -1;
 		for (String id : ids) {
 			String text = (id + " " + names.getOrDefault(id, id)).toLowerCase(Locale.ROOT);
 			boolean nether = text.contains("nether") || text.contains("hell");
 			boolean end = text.matches(".*\\bend\\b.*") || text.contains("the_end") || text.contains("_end");
 			boolean fits = want.isEmpty() ? !nether && !end
 					: want.equals("nether") ? nether : want.equals("end") ? end : text.contains(want);
+			if (!fits) {
+				continue;
+			}
+			// Oberwelt: "overworld"/"world" vor allem anderen, sonst landet z. B. eine Datapack-Welt "parallel" dort
+			int rank = !want.isEmpty() ? 0 : text.contains("overworld") ? 2 : text.contains("world") ? 1 : 0;
 			// bevorzugt die "normale" Karte, nicht z. B. eine 2D- oder Lowres-Variante
-			if (fits && (best == null || id.length() < best.length())) {
+			if (rank > bestRank || rank == bestRank && id.length() < best.length()) {
 				best = id;
+				bestRank = rank;
 			}
 		}
 		return best;

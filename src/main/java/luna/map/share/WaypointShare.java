@@ -2,12 +2,12 @@ package luna.map.share;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 
 import luna.map.LunaColors;
 import luna.map.LunaMap;
+import luna.map.data.Dimensions;
 import luna.map.data.MapSession;
 import luna.map.data.Waypoint;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -22,8 +22,9 @@ import net.minecraft.network.chat.Style;
 
 /**
  * Wegpunkte im Chat teilen – im selben Textformat wie Xaero's Minimap
- * ("xaero-waypoint:Name:K:x:y:z:Farbe:false:0:Internal-overworld"). So koennen Xaero-Spieler Luna-Wegpunkte
- * uebernehmen und umgekehrt. Empfangene Wegpunkte erscheinen als Chatzeile mit "[Hinzufuegen]".
+ * ("xaero-waypoint:Name:K:x:y:z:Farbe:false:0:Internal-the-nether-waypoints"). So koennen Xaero-Spieler Luna-Wegpunkte
+ * uebernehmen und umgekehrt. Empfangene Wegpunkte erscheinen als Chatzeile mit "[Hinzufuegen]" und landen in der
+ * Dimension, in der sie gesetzt wurden (Oberwelt, Nether, End oder eine eigene wie "nrz:parallel").
  */
 public final class WaypointShare {
 	private static final String PREFIX = "xaero-waypoint:";
@@ -75,7 +76,8 @@ public final class WaypointShare {
 			name = name.substring(0, 48);
 		}
 		return PREFIX + escape(name) + ":" + escape(waypoint.initial()) + ":" + waypoint.x + ":" + waypoint.y + ":"
-				+ waypoint.z + ":" + nearestColor(waypoint.color) + ":false:0:Internal-" + escape(destination(waypoint.dimension));
+				+ waypoint.z + ":" + nearestColor(waypoint.color) + ":false:0:Internal-"
+				+ escape(Dimensions.toXaero(waypoint.dimension) + "_waypoints");
 	}
 
 	/** Xaero: ":" -> "^col^", dann "-" -> "^min^", "_" -> "-", "*" -> "^ast^". */
@@ -86,19 +88,6 @@ public final class WaypointShare {
 
 	static String unescape(String text) {
 		return text.replace("^ast^", "*").replace("-", "_").replace("^min^", "-").replace("^col^", ":");
-	}
-
-	/** Dimension wie Xaero sie benennt: overworld, the_nether, the_end, sonst dim%namespace$pfad. */
-	private static String destination(String dimension) {
-		if (dimension == null) {
-			return "overworld";
-		}
-		return switch (dimension) {
-			case "minecraft:overworld" -> "overworld";
-			case "minecraft:the_nether" -> "the_nether";
-			case "minecraft:the_end" -> "the_end";
-			default -> "dim%" + dimension.replace(':', '$');
-		};
 	}
 
 	private static int nearestColor(int argb) {
@@ -156,28 +145,12 @@ public final class WaypointShare {
 		}
 	}
 
+	/** "Internal-the-nether-waypoints" -> "minecraft:the_nether"; ohne Angabe gilt die eigene Dimension. */
 	private static String dimension(String destination) {
-		if (!destination.startsWith("Internal-")) {
+		if (destination.length() <= "Internal-".length() || !destination.regionMatches(true, 0, "Internal-", 0, 9)) {
 			return MapSession.dimension(); // "Internal"/"External": gilt fuer die Welt, in der man gerade ist
 		}
-		String key = unescape(destination.substring("Internal-".length())).split("/")[0];
-		switch (key) {
-			case "overworld", "dim%0" -> {
-				return "minecraft:overworld";
-			}
-			case "the_nether", "dim%-1" -> {
-				return "minecraft:the_nether";
-			}
-			case "the_end", "dim%1" -> {
-				return "minecraft:the_end";
-			}
-			default -> {
-				if (key.startsWith("dim%")) {
-					key = key.substring(4).replace('$', ':');
-				}
-				return key.contains(":") ? key.toLowerCase(Locale.ROOT) : "minecraft:" + key.toLowerCase(Locale.ROOT);
-			}
-		}
+		return Dimensions.fromXaero(unescape(destination.substring("Internal-".length())));
 	}
 
 	private static int xaeroColor(int index) {
@@ -212,7 +185,7 @@ public final class WaypointShare {
 
 	private static Component line(Shared shared, int id) {
 		String coords = shared.x() + ", " + (shared.y() == null ? "~" : shared.y()) + ", " + shared.z();
-		Component dimName = dimensionName(shared.dimension());
+		Component dimName = Dimensions.name(shared.dimension());
 		MutableComponent hover = Component.literal(shared.name()).withStyle(Style.EMPTY.withColor(shared.color() & 0xFFFFFF))
 				.append(Component.literal("\n" + coords).withStyle(Style.EMPTY.withColor(LunaColors.LAVENDER & 0xFFFFFF)))
 				.append(Component.literal("\n").append(dimName));
@@ -224,24 +197,16 @@ public final class WaypointShare {
 		line.append(Component.literal("● ").withStyle(Style.EMPTY.withColor(shared.color() & 0xFFFFFF)));
 		line.append(Component.literal(shared.name()).withStyle(Style.EMPTY.withColor(0xFFFFFF)));
 		line.append(Component.literal(" (" + coords + ") ").withStyle(Style.EMPTY.withColor(LunaColors.LAVENDER & 0xFFFFFF)));
+		if (shared.dimension() != null && !shared.dimension().equals(MapSession.dimension())) {
+			// aus einer anderen Dimension: dazuschreiben, wo er hingehoert
+			line.append(Component.literal("[").append(dimName).append("] ").withStyle(Style.EMPTY.withColor(LunaColors.MOON & 0xFFFFFF)));
+		}
 		line.append(Component.translatable("lunamap.share.add").withStyle(Style.EMPTY.withColor(0x7CF2A2)));
 		// die ganze Zeile ist anklickbar, nicht nur "[Hinzufuegen]"
 		ClickEvent click = new ClickEvent.RunCommand("/lunamap wegpunkt " + id);
 		HoverEvent hoverAdd = new HoverEvent.ShowText(hover.copy().append(Component.literal("\n\n"))
 				.append(Component.translatable("lunamap.share.add_hover").withStyle(Style.EMPTY.withColor(0x7CF2A2))));
 		return line.withStyle(style -> style.withClickEvent(click).withHoverEvent(hoverAdd));
-	}
-
-	private static Component dimensionName(String dimension) {
-		if (dimension == null) {
-			return Component.literal("?");
-		}
-		return switch (dimension) {
-			case "minecraft:overworld" -> Component.translatable("lunamap.dim.overworld");
-			case "minecraft:the_nether" -> Component.translatable("lunamap.dim.nether");
-			case "minecraft:the_end" -> Component.translatable("lunamap.dim.end");
-			default -> Component.literal(dimension);
-		};
 	}
 
 	/** Klick auf "[Hinzufuegen]". */
@@ -264,8 +229,10 @@ public final class WaypointShare {
 			}
 		}
 		MapSession.waypoints().add(new Waypoint(shared.name(), shared.x(), y, shared.z(), shared.color(), dimension));
-		mc.gui.hud.getChat().addClientSystemMessage(Component.translatable("lunamap.share.added", shared.name())
-				.withStyle(Style.EMPTY.withColor(0x7CF2A2)));
-		LunaMap.LOGGER.info("Geteilten Wegpunkt {} hinzugefuegt", shared.name());
+		Component message = java.util.Objects.equals(dimension, MapSession.dimension())
+				? Component.translatable("lunamap.share.added", shared.name())
+				: Component.translatable("lunamap.share.added_other", shared.name(), Dimensions.name(dimension));
+		mc.gui.hud.getChat().addClientSystemMessage(message.copy().withStyle(Style.EMPTY.withColor(0x7CF2A2)));
+		LunaMap.LOGGER.info("Geteilten Wegpunkt {} in {} hinzugefuegt", shared.name(), dimension);
 	}
 }
