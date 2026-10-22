@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import luna.map.LunaColors;
+import luna.map.data.Dimensions;
 import luna.map.data.MapSession;
 import luna.map.online.BlueMapAuto;
 import luna.map.online.BlueMapClient;
@@ -90,12 +91,7 @@ public class OnlineMapScreen extends Screen {
 	}
 
 	private static Component dimensionName(String dim) {
-		return switch (dim) {
-			case OVERWORLD -> Component.translatable("lunamap.dim.overworld");
-			case NETHER -> Component.translatable("lunamap.dim.nether");
-			case END -> Component.translatable("lunamap.dim.end");
-			default -> Component.literal(dim);
-		};
+		return Dimensions.name(dim);
 	}
 
 	private void connect() {

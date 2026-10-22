@@ -81,6 +81,7 @@
   "lunamap.share.add": "[Add]",
   "lunamap.share.add_hover": "Click to save this waypoint",
   "lunamap.share.added": "Waypoint \"%s\" saved",
+  "lunamap.share.added_other": "Waypoint \"%s\" saved (%s) – it shows up once you are there",
   "lunamap.share.exists": "Waypoint \"%s\" already exists",
   "lunamap.worldmap.hint_3d": "3D · Hold wheel + drag: rotate & tilt · 2D button: back",
   "lunamap.worldmap.3d_hint": "Toggle 3D view. Hold the mouse wheel and drag: sideways = rotate, up/down = tilt",

@@ -72,7 +72,7 @@ public class LunaScreen extends Screen {
 						MapSession.resetDimension(minecraft);
 					}
 					minecraft.setScreenAndShow(this);
-				}, Component.translatable("lunamap.reset.title", String.valueOf(MapSession.dimension())),
+				}, Component.translatable("lunamap.reset.title", luna.map.data.Dimensions.name(MapSession.dimension())),
 						Component.translatable("lunamap.reset.message")))).bounds(left, top + 132, 150, 20).build());
 		reset.active = MapSession.store() != null;
 		addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())

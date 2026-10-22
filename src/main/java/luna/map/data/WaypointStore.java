@@ -33,6 +33,18 @@ public final class WaypointStore {
 				if (loaded != null) {
 					waypoints.addAll(loaded);
 				}
+				boolean repaired = false;
+				for (Waypoint waypoint : waypoints) {
+					String fixed = Dimensions.repair(waypoint.dimension);
+					if (!java.util.Objects.equals(fixed, waypoint.dimension)) {
+						LunaMap.LOGGER.info("Wegpunkt {}: Dimension {} -> {}", waypoint.name, waypoint.dimension, fixed);
+						waypoint.dimension = fixed;
+						repaired = true;
+					}
+				}
+				if (repaired) {
+					save();
+				}
 			} catch (IOException | JsonParseException e) {
 				LunaMap.LOGGER.warn("Konnte Wegpunkte aus {} nicht lesen", file, e);
 			}
