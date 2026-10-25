@@ -78,6 +78,7 @@ public final class MapStore {
 			region = load(rx, rz);
 			if (region == null && !create) {
 				missing.add(key);
+				loadBudget++; // keine Datei: kostet kaum Zeit, zaehlt nicht
 			}
 			if (region == null && create) {
 				region = new MapRegion(rx, rz);
@@ -111,6 +112,11 @@ public final class MapStore {
 		region.setHeight(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), argb == 0 ? MapRegion.NO_HEIGHT : y);
 	}
 
+	private void setHeight(int blockX, int blockZ, int y) {
+		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, true);
+		region.setHeight(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), y);
+	}
+
 	/** Hoehe an einer Stelle oder MapRegion.NO_HEIGHT. */
 	public int height(int blockX, int blockZ) {
 		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, false);
@@ -141,6 +147,11 @@ public final class MapStore {
 					continue;
 				}
 				if (!overwrite && color(x, z) != 0) {
+					// schon bekannt: hoechstens eine fehlende Hoehe nachtragen (aeltere Importe hatten keine, fuer 3D)
+					if (heights != null && heights[dz * width + dx] != MapRegion.NO_HEIGHT && height(x, z) == MapRegion.NO_HEIGHT) {
+						setHeight(x, z, heights[dz * width + dx]);
+						changed = true;
+					}
 					continue;
 				}
 				if (heights != null && heights[dz * width + dx] != MapRegion.NO_HEIGHT) {

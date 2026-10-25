@@ -1,9 +1,15 @@
 package luna.map.ui;
 
-import com.mojang.blaze3d.platform.NativeImage;
+import java.nio.ByteOrder;
+import java.nio.IntBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import luna.map.LunaColors;
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.Window;
+
 import luna.map.LunaMap;
+import luna.map.data.HeightField;
 import luna.map.data.MapRegion;
 import luna.map.data.MapStore;
 import net.minecraft.client.Minecraft;
@@ -13,268 +19,279 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 
 /**
- * 3D-Ansicht der Weltkarte: das Hoehenrelief wird pro Bildspalte von vorne nach hinten abgetastet (wie bei alten
- * Flugsimulatoren) und in eine einzige Textur gezeichnet. Neu gerechnet wird nur, wenn sich Kamera oder Kartendaten
- * aendern, waehrend des Drehens in halber Aufloesung – so kostet die Ansicht kaum FPS.
+ * 3D-Ansicht der Weltkarte. Die Bilder rechnet TerrainTracer im Hintergrund, damit das Spiel nie wartet: waehrend man
+ * dreht oder schiebt in kleinerer Aufloesung (so gross, wie der Rechner fluessig schafft), danach in voller
+ * Bildschirmaufloesung. Neu gerechnet wird nur, wenn sich Kamera oder die sichtbaren Kartendaten aendern.
  */
 final class Map3DView {
-	private static final Identifier ID = LunaMap.id("worldmap_3d");
-	/** Unerkundeter Boden. */
-	private static final int UNKNOWN = 0xFF1A1438;
-	private static final int FOG = 0xFF3A2E73;
-	private static final long DATA_REFRESH_MS = 400;
+	private static final Identifier ID_FAST = LunaMap.id("worldmap_3d_fast");
+	private static final Identifier ID_FULL = LunaMap.id("worldmap_3d");
+	/** So oft wird hoechstens nachgesehen, ob sich die sichtbaren Kartendaten geaendert haben. */
+	private static final long DATA_REFRESH_MS = 1000;
+	/** Solange noch Regionen von der Platte kommen, oefter. */
+	private static final long LOADING_REFRESH_MS = 250;
+	/** Ziel fuer ein schnelles Bild beim Drehen. */
+	private static final long FAST_TARGET_NANOS = 30_000_000L;
+	/** Mehr Bildpunkte rechnet auch die volle Aufloesung nicht (4K wird hochskaliert). */
+	private static final int MAX_PIXELS = 1920 * 1200;
+	private static final int REGION_LOADS_PER_IMAGE = 6;
+	private static final ExecutorService JOBS = Executors.newSingleThreadExecutor(r -> {
+		Thread thread = new Thread(r, "Luna Map 3D-Bild");
+		thread.setDaemon(true);
+		thread.setPriority(Thread.NORM_PRIORITY - 1);
+		return thread;
+	});
 
-	private DynamicTexture texture;
-	private int texW;
-	private int texH;
+	/** Ein Bild in Arbeit. */
+	private static final class Job {
+		final TerrainTracer tracer;
+		final HeightField field;
+		final String key;
+		final boolean full;
+		final int storeVersion;
+		volatile boolean cancelled;
+		volatile boolean done;
+		int[] pixels;
+		long nanos;
 
-	// Kamera des zuletzt gezeichneten Bildes (auch fuer die Projektion von Wegpunkten)
-	private double camX, camY, camZ;
-	private double fX, fY, fZ;
-	private double rX, rZ;
-	private double uX, uY, uZ;
-	private double focal;
-	private int outW, outH, guiW, guiH;
+		Job(TerrainTracer tracer, HeightField field, String key, boolean full, int storeVersion) {
+			this.tracer = tracer;
+			this.field = field;
+			this.key = key;
+			this.full = full;
+			this.storeVersion = storeVersion;
+		}
+	}
+
+	private final Canvas fast = new Canvas(ID_FAST, "Luna Map 3D (schnell)");
+	private final Canvas full = new Canvas(ID_FULL, "Luna Map 3D");
+	private Canvas shownCanvas;
+	/** Strahlverfolger (Kamera + Daten) des Bildes auf dem Schirm, fuer Wegpunkte und Mausklicks. */
+	private TerrainTracer shown;
+	private HeightField shownField;
+	private String shownKey = "";
+	private boolean shownFull;
+	private int shownVersion;
+	private Job job;
+	private long lastCheck;
+	/** Bildpunkte fuer schnelle Bilder, passt sich der Rechenzeit an. */
+	private int fastPixels = 160_000;
 	private double targetY = Double.NaN;
-	/** Sichtweite in Bloecken, waechst mit dem Abstand der Kamera. */
-	private double maxDistance = 900;
+	private int guiW;
+	private int guiH;
 
-	private String lastKey = "";
-	private long lastRender;
-	private int lastVersion = -1;
-	private boolean regionsMissing;
-
-	/** Kamera einstellen und bei Bedarf neu zeichnen; danach die Textur ueber den ganzen Bildschirm legen. */
+	/** Kamera einstellen, fertige Bilder uebernehmen, bei Bedarf ein neues anstossen und das aktuelle Bild zeichnen. */
 	void draw(GuiGraphicsExtractor graphics, MapStore store, double centerX, double centerZ, double scale, double yaw,
 			double tilt, int width, int height, boolean moving) {
 		guiW = width;
 		guiH = height;
-		int div = moving ? 2 : 1;
-		int w = Math.max(64, Math.min(640, width / div));
-		int h = Math.max(36, (int) Math.round(w * (double) height / width));
-
 		// Hoehe in der Bildmitte sanft nachfuehren, damit die Kamera nicht springt
 		int center = store.height((int) Math.floor(centerX), (int) Math.floor(centerZ));
 		double wanted = center == MapRegion.NO_HEIGHT ? (Double.isNaN(targetY) ? 64 : targetY) : center;
-		targetY = Double.isNaN(targetY) ? wanted : targetY + (wanted - targetY) * 0.25;
+		targetY = Double.isNaN(targetY) || Math.abs(wanted - targetY) < 0.05 ? wanted : targetY + (wanted - targetY) * 0.25;
+		String key = String.format("%.2f|%.2f|%.4f|%.4f|%.4f|%d|%d|%.1f", centerX, centerZ, scale, yaw, tilt, width, height,
+				targetY);
 
-		setupCamera(centerX, centerZ, scale, yaw, tilt, w, h);
-		String key = String.format("%.2f|%.2f|%.4f|%.4f|%.4f|%d|%d|%.1f", centerX, centerZ, scale, yaw, tilt, w, h, targetY);
-		long now = System.currentTimeMillis();
-		boolean dataChanged = (store.version != lastVersion || regionsMissing) && now - lastRender > DATA_REFRESH_MS;
-		if (!key.equals(lastKey) || dataChanged || texture == null) {
-			lastKey = key;
-			lastVersion = store.version;
-			lastRender = now;
+		finishJob();
+		if (job != null && job.full && !job.key.equals(key)) {
+			job.cancelled = true; // ein grosses Bild fuer eine alte Kamera lohnt nicht mehr
+		}
+		if (job == null) {
+			long now = System.currentTimeMillis();
+			if (!key.equals(shownKey)) {
+				start(store, key, centerX, centerZ, scale, yaw, tilt, false, null);
+				lastCheck = now;
+			} else if (!shownFull && !moving) {
+				start(store, key, centerX, centerZ, scale, yaw, tilt, true, null);
+				lastCheck = now;
+			} else if (shownField != null && (shownField.incomplete || store.version != shownVersion)
+					&& now - lastCheck > (shownField.incomplete ? LOADING_REFRESH_MS : DATA_REFRESH_MS)) {
+				// Kartendaten haben sich geaendert: nur neu zeichnen, wenn es den sichtbaren Ausschnitt betrifft
+				lastCheck = now;
+				TerrainTracer.Camera cam = camera(store, centerX, centerZ, scale, yaw, tilt, false);
+				HeightField field = capture(store, cam);
+				if (!field.sameAs(shownField)) {
+					start(store, key, centerX, centerZ, scale, yaw, tilt, !moving, field);
+				} else {
+					shownVersion = store.version;
+				}
+			}
+		}
+		if (shown == null && job != null) {
+			// allererstes Bild: kurz warten, damit nicht ein leerer Schirm aufblitzt
+			waitFor(job);
+			finishJob();
+		}
+		if (shownCanvas != null && shownCanvas.texture != null) {
+			graphics.blit(RenderPipelines.GUI_TEXTURED, shownCanvas.id, 0, 0, 0, 0, width, height, shownCanvas.width,
+					shownCanvas.height, shownCanvas.width, shownCanvas.height);
+		}
+	}
+
+	private TerrainTracer.Camera camera(MapStore store, double centerX, double centerZ, double scale, double yaw, double tilt,
+			boolean fullSize) {
+		Window window = Minecraft.getInstance().getWindow();
+		double aspect = guiW / (double) Math.max(1, guiH);
+		int w;
+		if (fullSize) {
+			w = Math.max(64, window.getWidth());
+			w = (int) Math.min(w, Math.sqrt(MAX_PIXELS * aspect));
+		} else {
+			w = (int) Math.max(64, Math.min(window.getWidth(), Math.sqrt(fastPixels * aspect)));
+			w = Math.max(64, w / 16 * 16); // nicht bei jeder kleinen Anpassung eine neue Textur
+		}
+		int h = Math.max(36, (int) Math.round(w / aspect));
+		TerrainTracer.Camera cam = TerrainTracer.camera(centerX, centerZ, targetY, scale, yaw, tilt, w, h, guiH, -1e9);
+		// nicht im Berg stecken: Kamera mindestens ein paar Bloecke ueber dem Boden unter ihr
+		int below = store.height((int) Math.floor(cam.x()), (int) Math.floor(cam.z()));
+		if (below != MapRegion.NO_HEIGHT && cam.y() < below + 4) {
+			cam = TerrainTracer.camera(centerX, centerZ, targetY, scale, yaw, tilt, w, h, guiH, below + 4);
+		}
+		return cam;
+	}
+
+	private static HeightField capture(MapStore store, TerrainTracer.Camera cam) {
+		double reach = cam.maxDistance();
+		return HeightField.capture(store, cam.x() - reach, cam.z() - reach, cam.x() + reach, cam.z() + reach, cam.x(), cam.z(),
+				REGION_LOADS_PER_IMAGE);
+	}
+
+	private void start(MapStore store, String key, double centerX, double centerZ, double scale, double yaw, double tilt,
+			boolean fullSize, HeightField field) {
+		TerrainTracer.Camera cam = camera(store, centerX, centerZ, scale, yaw, tilt, fullSize);
+		if (field == null) {
+			field = capture(store, cam);
+		}
+		Job next = new Job(new TerrainTracer(cam, field, true), field, key, fullSize, store.version);
+		job = next;
+		JOBS.execute(() -> {
 			long t0 = System.nanoTime();
-			render(store, w, h);
-			if (Boolean.getBoolean("lunamap.debug")) {
-				LunaMap.LOGGER.info("3D-Bild {}x{} in {} ms", w, h, (System.nanoTime() - t0) / 100_000 / 10.0);
+			try {
+				next.pixels = next.tracer.render(() -> next.cancelled);
+			} catch (RuntimeException e) {
+				LunaMap.LOGGER.warn("3D-Ansicht konnte nicht gezeichnet werden", e);
+			} finally {
+				next.nanos = System.nanoTime() - t0;
+				next.done = true;
 			}
-		}
-		graphics.blit(RenderPipelines.GUI_TEXTURED, ID, 0, 0, 0, 0, width, height, texW, texH, texW, texH);
+		});
 	}
 
-	private void setupCamera(double centerX, double centerZ, double scale, double yaw, double tilt, int w, int h) {
-		outW = w;
-		outH = h;
-		// tilt 0 = von oben, 1 = flach ueber dem Boden (25 Grad)
-		double pitch = Math.toRadians(90 - tilt * 65);
-		double sin = Math.sin(pitch);
-		double cos = Math.cos(pitch);
-		double fhX = Math.sin(yaw);
-		double fhZ = -Math.cos(yaw);
-		rX = Math.cos(yaw);
-		rZ = Math.sin(yaw);
-		fX = fhX * cos;
-		fY = -sin;
-		fZ = fhZ * cos;
-		uX = fhX * sin;
-		uY = cos;
-		uZ = fhZ * sin;
-		focal = h * 1.0;
-		// Abstand so, dass die Mitte etwa so gross ist wie in der 2D-Karte mit diesem Zoom
-		double distance = guiH / Math.max(1e-3, scale);
-		maxDistance = Math.min(2500, distance * 2 + 400);
-		camX = centerX - fX * distance;
-		camY = targetY - fY * distance;
-		camZ = centerZ - fZ * distance;
+	private static void waitFor(Job job) {
+		long until = System.currentTimeMillis() + 500;
+		while (!job.done && System.currentTimeMillis() < until) {
+			java.util.concurrent.locks.LockSupport.parkNanos(200_000);
+		}
 	}
 
-	private void render(MapStore store, int w, int h) {
-		if (texture == null || texW != w || texH != h) {
-			if (texture != null) {
-				Minecraft.getInstance().getTextureManager().release(ID);
-			}
-			texture = new DynamicTexture(() -> "Luna Map 3D", w, h, false);
-			Minecraft.getInstance().getTextureManager().register(ID, texture);
-			texW = w;
-			texH = h;
+	/** Fertiges Bild hochladen und anzeigen. */
+	private void finishJob() {
+		Job done = job;
+		if (done == null || !done.done) {
+			return;
 		}
-		NativeImage image = texture.getPixels();
-		int[] pixels = new int[w * h];
-		// Himmel: Luna-Nachtverlauf
-		for (int y = 0; y < h; y++) {
-			int sky = mix(0xFF2B2160, LunaColors.NIGHT, y / (float) h);
-			java.util.Arrays.fill(pixels, y * w, y * w + w, sky);
+		job = null;
+		if (done.cancelled || done.pixels == null) {
+			return;
 		}
-		store.loadBudget = 3;
-		regionsMissing = false;
-		try {
-			for (int x = 0; x < w; x++) {
-				column(store, pixels, x, w, h);
-			}
-		} finally {
-			regionsMissing = store.loadBudget <= 0;
-			store.loadBudget = Integer.MAX_VALUE;
+		if (!done.full) {
+			// Aufloesung fuer schnelle Bilder an die Rechenzeit anpassen
+			double factor = Math.max(0.6, Math.min(1.5, FAST_TARGET_NANOS / (double) Math.max(1, done.nanos)));
+			fastPixels = (int) Math.max(40_000, Math.min(MAX_PIXELS, fastPixels * factor));
 		}
-		for (int y = 0; y < h; y++) {
-			for (int x = 0; x < w; x++) {
-				image.setPixel(x, y, pixels[y * w + x]);
-			}
+		if (Boolean.getBoolean("lunamap.debug")) {
+			LunaMap.LOGGER.info("3D-Bild {}x{} in {} ms", done.tracer.width(), done.tracer.height(), done.nanos / 1_000_000);
 		}
-		texture.upload();
-	}
-
-	/** Eine Bildspalte von unten (nah) nach oben (fern). */
-	private void column(MapStore store, int[] pixels, int px, int w, int h) {
-		double xn = (px + 0.5 - w / 2.0) / focal;
-		int ybuf = h;
-		double lastX = Double.NaN, lastZ = 0;
-		double stepX = 0, stepZ = 0;
-		int lastBlockX = Integer.MIN_VALUE, lastBlockZ = Integer.MIN_VALUE;
-		for (int py = h - 1; py >= -h && ybuf > 0; py--) {
-			double gx, gz;
-			double yn = (py + 0.5 - h / 2.0) / focal;
-			double dX = fX + rX * xn - uX * yn;
-			double dY = fY - uY * yn;
-			double dZ = fZ + rZ * xn - uZ * yn;
-			if (dY < -1e-4 && py >= 0) {
-				// Schnittpunkt dieses Bildpunkts mit der Bodenebene auf Hoehe der Bildmitte
-				double t = (targetY - camY) / dY;
-				gx = camX + dX * t;
-				gz = camZ + dZ * t;
-				if (!Double.isNaN(lastX)) {
-					stepX = gx - lastX;
-					stepZ = gz - lastZ;
-				}
-			} else {
-				// ueber dem Horizont der Ebene: in gleicher Richtung mit wachsenden Schritten weiter (Berge am Horizont)
-				if (Double.isNaN(lastX)) {
-					return;
-				}
-				stepX *= 1.06;
-				stepZ *= 1.06;
-				if (Math.abs(stepX) + Math.abs(stepZ) < 0.5) {
-					double len = Math.max(1e-6, Math.hypot(stepX, stepZ));
-					stepX = stepX / len * 0.5;
-					stepZ = stepZ / len * 0.5;
-				}
-				gx = lastX + stepX;
-				gz = lastZ + stepZ;
-			}
-			lastX = gx;
-			lastZ = gz;
-			double dist = Math.hypot(gx - camX, gz - camZ);
-			if (dist > maxDistance) {
-				return;
-			}
-			int bx = (int) Math.floor(gx);
-			int bz = (int) Math.floor(gz);
-			if (bx == lastBlockX && bz == lastBlockZ && py < h - 1) {
-				continue; // gleicher Block wie eben, nichts Neues
-			}
-			lastBlockX = bx;
-			lastBlockZ = bz;
-			int color = store.color(bx, bz);
-			int height = color == 0 ? MapRegion.NO_HEIGHT : store.height(bx, bz);
-			if (color == 0) {
-				color = UNKNOWN;
-			}
-			double y = height == MapRegion.NO_HEIGHT ? targetY : height + 1;
-			// den Block oben in der Mitte auf den Bildschirm projizieren
-			double vx = bx + 0.5 - camX, vy = y - camY, vz = bz + 0.5 - camZ;
-			double depth = vx * fX + vy * fY + vz * fZ;
-			if (depth <= 0.1) {
-				continue;
-			}
-			double up = vx * uX + vy * uY + vz * uZ;
-			int sy = (int) Math.floor(h / 2.0 - focal * up / depth);
-			if (sy >= ybuf) {
-				continue;
-			}
-			// Licht von Nordwesten: Hangneigung macht das Relief sichtbar
-			int west = store.height(bx - 1, bz - 1);
-			float light = west == MapRegion.NO_HEIGHT || height == MapRegion.NO_HEIGHT ? 1f
-					: Math.max(0.7f, Math.min(1.3f, 1f + (height - west) * 0.07f));
-			int top = shade(color, light);
-			int wall = shade(color, light * 0.72f);
-			float fog = (float) Math.max(0, (dist - maxDistance * 0.45) / (maxDistance * 0.55));
-			if (fog > 0) {
-				top = mix(top, FOG, fog);
-				wall = mix(wall, FOG, fog);
-			}
-			int from = Math.max(0, sy);
-			for (int y2 = from; y2 < ybuf; y2++) {
-				// die obersten zwei Pixel sind die Oberseite, darunter die Seitenwand (Klippen)
-				pixels[y2 * w + px] = y2 - sy < 2 ? top : wall;
-			}
-			ybuf = from;
-		}
+		Canvas canvas = done.full ? full : fast;
+		canvas.upload(done.pixels, done.tracer.width(), done.tracer.height());
+		shownCanvas = canvas;
+		shown = done.tracer;
+		shownField = done.field;
+		shownKey = done.key;
+		shownFull = done.full;
+		shownVersion = done.storeVersion;
 	}
 
 	/** Bildschirmposition (GUI) eines Punktes, oder null wenn er hinter der Kamera liegt. */
 	float[] project(double x, double y, double z) {
-		double vx = x - camX, vy = y - camY, vz = z - camZ;
-		double depth = vx * fX + vy * fY + vz * fZ;
+		if (shown == null) {
+			return null;
+		}
+		TerrainTracer.Camera cam = shown.camera();
+		double vx = x - cam.x(), vy = y - cam.y(), vz = z - cam.z();
+		double depth = vx * cam.fX() + vy * cam.fY() + vz * cam.fZ();
 		if (depth <= 0.5) {
 			return null;
 		}
-		double right = vx * rX + vz * rZ;
-		double up = vx * uX + vy * uY + vz * uZ;
-		float sx = (float) ((outW / 2.0 + focal * right / depth) * guiW / outW);
-		float sy = (float) ((outH / 2.0 - focal * up / depth) * guiH / outH);
+		double right = vx * cam.rX() + vz * cam.rZ();
+		double up = vx * cam.uX() + vy * cam.uY() + vz * cam.uZ();
+		float sx = (float) ((cam.width() / 2.0 + cam.focal() * right / depth) * guiW / cam.width());
+		float sy = (float) ((cam.height() / 2.0 - cam.focal() * up / depth) * guiH / cam.height());
 		return new float[] {sx, sy};
 	}
 
-	/** Bodenpunkt (Hoehe der Bildmitte) unter einer Bildschirmposition, oder null (Himmel). */
+	/** Blockposition {x, z, y} unter einer Bildschirmposition (GUI), oder null (Himmel). */
 	double[] ground(double guiX, double guiY) {
-		double xn = (guiX * outW / guiW - outW / 2.0) / focal;
-		double yn = (guiY * outH / guiH - outH / 2.0) / focal;
-		double dX = fX + rX * xn - uX * yn;
-		double dY = fY - uY * yn;
-		double dZ = fZ + rZ * xn - uZ * yn;
-		if (dY > -1e-4) {
+		if (shown == null) {
 			return null;
 		}
-		double t = (targetY - camY) / dY;
-		return new double[] {camX + dX * t, camZ + dZ * t};
-	}
-
-	double targetY() {
-		return Double.isNaN(targetY) ? 64 : targetY;
+		TerrainTracer.Camera cam = shown.camera();
+		double[] d = cam.direction(guiX * cam.width() / guiW, guiY * cam.height() / guiH);
+		double[] hit = shown.pick(d[0], d[1], d[2]);
+		return hit == null ? null : new double[] {hit[0], hit[2], hit[1]};
 	}
 
 	void release() {
-		if (texture != null) {
-			Minecraft.getInstance().getTextureManager().release(ID);
-			texture = null;
+		if (job != null) {
+			job.cancelled = true;
+			job = null;
 		}
-		lastKey = "";
+		fast.release();
+		full.release();
+		shownCanvas = null;
+		shown = null;
+		shownField = null;
+		shownKey = "";
 	}
 
-	private static int shade(int argb, float factor) {
-		int r = Math.min(255, (int) (((argb >> 16) & 0xFF) * factor));
-		int g = Math.min(255, (int) (((argb >> 8) & 0xFF) * factor));
-		int b = Math.min(255, (int) ((argb & 0xFF) * factor));
-		return 0xFF000000 | r << 16 | g << 8 | b;
-	}
+	/** Eine GPU-Textur fuer die fertigen Bilder. */
+	private static final class Canvas {
+		final Identifier id;
+		final String name;
+		DynamicTexture texture;
+		int width;
+		int height;
 
-	private static int mix(int a, int b, float t) {
-		t = Math.max(0, Math.min(1, t));
-		int r = (int) (((a >> 16) & 0xFF) * (1 - t) + ((b >> 16) & 0xFF) * t);
-		int g = (int) (((a >> 8) & 0xFF) * (1 - t) + ((b >> 8) & 0xFF) * t);
-		int bl = (int) ((a & 0xFF) * (1 - t) + (b & 0xFF) * t);
-		return 0xFF000000 | r << 16 | g << 8 | bl;
+		Canvas(Identifier id, String name) {
+			this.id = id;
+			this.name = name;
+		}
+
+		/** Uebernimmt das Bild (ARGB, wird dabei umgewandelt). */
+		void upload(int[] argb, int w, int h) {
+			if (texture == null || width != w || height != h) {
+				release();
+				texture = new DynamicTexture(() -> name, w, h, false);
+				Minecraft.getInstance().getTextureManager().register(id, texture);
+				width = w;
+				height = h;
+			}
+			NativeImage image = texture.getPixels();
+			// NativeImage liegt als RGBA im Speicher, als Zahl in nativer Reihenfolge also ABGR (wie setPixelABGR)
+			for (int i = 0; i < argb.length; i++) {
+				int c = argb[i];
+				argb[i] = c & 0xFF00FF00 | (c & 0xFF) << 16 | (c >> 16) & 0xFF;
+			}
+			IntBuffer buffer = image.getPixelBytes().order(ByteOrder.nativeOrder()).asIntBuffer();
+			buffer.put(0, argb, 0, Math.min(argb.length, buffer.capacity()));
+			texture.upload();
+		}
+
+		void release() {
+			if (texture != null) {
+				Minecraft.getInstance().getTextureManager().release(id);
+				texture = null;
+			}
+		}
 	}
 }
