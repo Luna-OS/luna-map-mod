@@ -15,7 +15,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 | **Radar** (`Tab`) | Mit `Tab` an/aus. Minimap und Weltkarte: Mobs als **Kopf-Symbol wie bei Xaero** (aus dem Modell gezeichnet, mit Schnauze, Ohren, Hörnern; Mobs ohne Kopf wie Schleim oder Ghast ganz von vorne), Items = rote Raute, andere Spieler = ihr Skin-Kopf (auf der Weltkarte mit Name); weit über/unter dir = blasser |
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
 | **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte. In der Welt als kleines Schild mit den ersten zwei Buchstaben – Name und Entfernung erscheinen, wenn du draufschaust. In der Liste mit ●/○ einzeln ausblenden |
-| **3D-Ansicht** | Weltkarte: Knopf **3D/2D** oder Mausrad gedrückt halten und ziehen (seitlich = drehen, hoch/runter = neigen). Zeigt Berge, Bäume und Täler mit echter Höhe (aus eigenem Scan und BlueMap); wird nur neu gerechnet, wenn sich etwas ändert |
+| **3D-Ansicht** | Weltkarte: Knopf **3D/2D** oder Mausrad gedrückt halten und ziehen (seitlich = drehen, hoch/runter = neigen, bis fast flach über dem Boden). Echte Blöcke mit Ober- und Seitenflächen in voller Bildschirmauflösung: Mondlicht mit Schatten, dunklere Ecken und Kanten, feine Blockstruktur beim Reinzoomen, spiegelndes Wasser, Dunst in der Ferne und Sternenhimmel. Höhen aus eigenem Scan, BlueMap und Xaero-Import. Gerechnet wird im Hintergrund – beim Drehen kurz gröber, danach scharf, das Spiel ruckelt nicht. Rechtsklick setzt den Wegpunkt auf den angeklickten Block |
 | **Todespunkte** | Beim Tod erscheint „Tod“ mit Totenkopf (Minimap, Weltkarte, in der Welt). Erreichst du ihn, verschwindet er. Stirbst du vorher nochmal, wird der alte zu „Vorheriger Tod“ (grauer Totenkopf). In den Einstellungen abschaltbar |
 | **Wegpunkte teilen** | Wegpunktliste → *Teilen* schickt ihn in den Chat – im Format von Xaero's Minimap, also können Xaero-Spieler ihn übernehmen. Geteilte Wegpunkte von Xaero- oder Luna-Spielern erscheinen als Chatzeile: anklicken = speichern. Der Wegpunkt landet in der Dimension, in der er gesetzt wurde: im Nether geteilt = Nether-Wegpunkt, genauso End und eigene Welten (steht in der Chatzeile dabei, wenn du gerade woanders bist) |
 | **Eigene Dimensionen** | Welten aus Datapacks oder Mods (z. B. `nrz:parallel`) bekommen wie Oberwelt, Nether und End ihre eigene Karte, eigene Wegpunkte und eine eigene BlueMap-Zuordnung; die Wegpunktliste zeigt oben, in welcher Dimension du bist |
@@ -42,6 +42,8 @@ Auf dem Server (z. B. ZweersSMP) einloggen → `J` → *Einstellungen* → **Xae
 - Liest Xaeros Server-Karten (`xaero/world-map/Multiplayer_…/…/mw$default/*.zip`, Format bis Xaero's World Map 1.47)
   und die Wegpunkte (`xaero/minimap/…/dim%…/*.txt`), alle Dimensionen.
 - Läuft im Hintergrund, schon erkundete Luna-Daten werden nicht überschrieben, doppelte Wegpunkte übersprungen.
+- Die Höhen kommen mit, damit Xaeros Karten auch in der 3D-Ansicht Berge und Täler haben. Schon früher importiert?
+  Einfach nochmal importieren – dann werden nur die fehlenden Höhen nachgetragen.
 - Im Einzelspieler speichert Xaero keine eigenen Kartendateien – dort gibt es nur die Wegpunkte zu übernehmen.
 
 ## BlueMap (immer aktuelle Karte)

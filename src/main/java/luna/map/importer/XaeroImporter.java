@@ -167,12 +167,13 @@ public final class XaeroImporter {
 			try {
 				XaeroRegionReader.Region region = XaeroRegionReader.read(file);
 				int[] argb = toColors(region, colors, rx, rz);
+				short[] heights = toHeights(region);
 				int x0 = rx * XaeroRegionReader.SIZE;
 				int z0 = rz * XaeroRegionReader.SIZE;
 				while (MapSession.pendingMainThreadTasks() > 32) {
 					Thread.sleep(50);
 				}
-				MapSession.runOnMainThread(() -> merge(world, dimension, x0, z0, argb, offline));
+				MapSession.runOnMainThread(() -> merge(world, dimension, x0, z0, argb, heights, offline));
 			} catch (IOException | RuntimeException e) {
 				LunaMap.LOGGER.warn("Xaero-Region {} uebersprungen: {}", file, e.toString());
 			} catch (InterruptedException e) {
@@ -194,7 +195,8 @@ public final class XaeroImporter {
 	 * Auf dem Haupt-Thread. Teile, die die offene Karte gerade im Speicher hat, gehen dorthin,
 	 * alles andere direkt in die Dateien - so bleibt der Speicherbedarf auch bei riesigen Karten klein.
 	 */
-	private static void merge(String world, String dimension, int x0, int z0, int[] argb, Map<String, MapStore> offline) {
+	private static void merge(String world, String dimension, int x0, int z0, int[] argb, short[] heights,
+			Map<String, MapStore> offline) {
 		if (!world.equals(MapSession.world())) {
 			return;
 		}
@@ -203,15 +205,17 @@ public final class XaeroImporter {
 		MapStore live = dimension.equals(MapSession.dimension()) ? MapSession.store() : null;
 		MapStore files = offline.computeIfAbsent(dimension, d -> MapStore.open(MapSession.dimensionFolder(d), MapSession.textureOwner(d)));
 		int[] piece = new int[part * part];
+		short[] pieceHeights = new short[part * part];
 		for (int pz = 0; pz < size / part; pz++) {
 			for (int px = 0; px < size / part; px++) {
 				for (int z = 0; z < part; z++) {
 					System.arraycopy(argb, (pz * part + z) * size + px * part, piece, z * part, part);
+					System.arraycopy(heights, (pz * part + z) * size + px * part, pieceHeights, z * part, part);
 				}
 				int bx = x0 + px * part;
 				int bz = z0 + pz * part;
 				boolean inMemory = live != null && live.isLoaded(bx >> MapRegion.SHIFT, bz >> MapRegion.SHIFT);
-				(inMemory ? live : files).merge(bx, bz, part, part, piece, false, null);
+				(inMemory ? live : files).merge(bx, bz, part, part, piece, pieceHeights, false, null);
 				if (live != null && !inMemory) {
 					live.forget(bx >> MapRegion.SHIFT, bz >> MapRegion.SHIFT);
 				}
@@ -236,6 +240,19 @@ public final class XaeroImporter {
 			}
 		}
 		return argb;
+	}
+
+	/** Hoehe des obersten Blocks fuer die 3D-Ansicht; bei Wasser die Oberflaeche, nicht der Grund. */
+	private static short[] toHeights(XaeroRegionReader.Region region) {
+		short[] heights = new short[region.heights.length];
+		for (int i = 0; i < heights.length; i++) {
+			if (region.blocks[i] == null) {
+				heights[i] = MapRegion.NO_HEIGHT;
+			} else {
+				heights[i] = region.water[i] && region.tops[i] > region.heights[i] ? region.tops[i] : region.heights[i];
+			}
+		}
+		return heights;
 	}
 
 	/** Xaero legt Karten in Unterordnern wie "mw$default" ab, im Einzelspieler auch direkt. */

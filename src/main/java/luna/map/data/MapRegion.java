@@ -21,6 +21,8 @@ public final class MapRegion {
 	/** Wie viele geaenderte Regionen in diesem Bild noch neu hochgeladen werden duerfen (Rest im naechsten Bild). */
 	public static int uploadBudget = Integer.MAX_VALUE;
 	boolean unsaved;
+	/** Zaehlt jede Aenderung an Farben oder Hoehen (die 3D-Ansicht merkt daran, was sie neu rechnen muss). */
+	int changes;
 	private boolean textureDirty = true;
 	private DynamicTexture texture;
 	private Identifier textureId;
@@ -43,6 +45,7 @@ public final class MapRegion {
 		if (heights[i] != value) {
 			heights[i] = value;
 			unsaved = true;
+			changes++;
 		}
 	}
 
@@ -56,6 +59,7 @@ public final class MapRegion {
 			colors[i] = argb;
 			unsaved = true;
 			textureDirty = true;
+			changes++;
 		}
 	}
 

@@ -101,7 +101,7 @@ public class WorldMapScreen extends Screen {
 		return new float[] {(float) screenXd(x), (float) screenYd(z)};
 	}
 
-	/** Blockposition unter der Maus, null ueber dem Horizont. */
+	/** Blockposition unter der Maus ({x, z}, in 3D {x, z, y}), null ueber dem Horizont. */
 	private double[] fromScreen(double mouseX, double mouseY) {
 		if (in3d()) {
 			return view3d.ground(mouseX, mouseY);
@@ -299,7 +299,8 @@ public class WorldMapScreen extends Screen {
 			}
 			int bx = (int) Math.floor(under[0]);
 			int bz = (int) Math.floor(under[1]);
-			int by = minecraft.player != null ? minecraft.player.getBlockY() : 64;
+			// in 3D liegt der Wegpunkt auf dem angeklickten Block, sonst auf Spielerhoehe
+			int by = under.length > 2 ? (int) Math.floor(under[2]) : minecraft.player != null ? minecraft.player.getBlockY() : 64;
 			minecraft.setScreenAndShow(WaypointEditScreen.create(this, bx, by, bz));
 			return true;
 		}
@@ -322,7 +323,7 @@ public class WorldMapScreen extends Screen {
 		if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 			if (in3d()) {
 				// verschieben passend zur Blickrichtung; je flacher, desto mehr Boden pro Pixel nach hinten
-				double sinPitch = Math.max(0.35, Math.sin(Math.toRadians(90 - tilt * 65)));
+				double sinPitch = Math.max(0.35, Math.sin(TerrainTracer.pitch(tilt)));
 				double rightX = Math.cos(yaw), rightZ = Math.sin(yaw);
 				double fwdX = Math.sin(yaw), fwdZ = -Math.cos(yaw);
 				centerX -= (rightX * dx - fwdX * dy / sinPitch) / scale;

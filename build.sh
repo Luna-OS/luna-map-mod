@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-VERSION="2.10.0+26.3"
+VERSION="2.11.0+26.3"
 OUT="$ROOT/dist/luna-map-$VERSION.jar"
 DEPS="$ROOT/.deps"
 JAVAC="${JAVA_HOME:+$JAVA_HOME/bin/}javac"
