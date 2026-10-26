@@ -40,6 +40,8 @@ public class LunaConfig {
 	public double posY = 0;
 	public Zoom zoom = Zoom.MEDIUM;
 	public boolean coordinates = true;
+	/** Biom unter der Minimap (wie bei Xaero). */
+	public boolean biome = true;
 	public boolean worldWaypoints = true;
 	public boolean caveMode = true;
 	public boolean radar = true;

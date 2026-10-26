@@ -18,6 +18,10 @@ public final class MapRegion {
 	/** Hoehe des obersten Blocks (fuer die 3D-Ansicht), NO_HEIGHT = unbekannt. */
 	final short[] heights = new short[SIZE * SIZE];
 	public static final short NO_HEIGHT = Short.MIN_VALUE;
+	/** Biome in 4x4-Feldern (so fein unterscheidet Minecraft sie ohnehin), Nummern aus Biomes. */
+	public static final int BIOME_SHIFT = 2;
+	public static final int BIOME_SIZE = SIZE >> BIOME_SHIFT;
+	final short[] biomes = new short[BIOME_SIZE * BIOME_SIZE];
 	/** Wie viele geaenderte Regionen in diesem Bild noch neu hochgeladen werden duerfen (Rest im naechsten Bild). */
 	public static int uploadBudget = Integer.MAX_VALUE;
 	boolean unsaved;
@@ -46,6 +50,18 @@ public final class MapRegion {
 			heights[i] = value;
 			unsaved = true;
 			changes++;
+		}
+	}
+
+	short biome(int localX, int localZ) {
+		return biomes[(localZ >> BIOME_SHIFT) * BIOME_SIZE + (localX >> BIOME_SHIFT)];
+	}
+
+	void setBiome(int localX, int localZ, short id) {
+		int i = (localZ >> BIOME_SHIFT) * BIOME_SIZE + (localX >> BIOME_SHIFT);
+		if (biomes[i] != id) {
+			biomes[i] = id;
+			unsaved = true;
 		}
 	}
 

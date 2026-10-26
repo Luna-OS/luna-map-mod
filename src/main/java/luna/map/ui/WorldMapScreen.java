@@ -3,6 +3,8 @@ package luna.map.ui;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import luna.map.LunaColors;
+import luna.map.data.Biomes;
+import luna.map.data.ChunkScanner;
 import luna.map.data.LodCache;
 import luna.map.data.MapRegion;
 import luna.map.data.MapSession;
@@ -39,6 +41,10 @@ public class WorldMapScreen extends Screen {
 	private long frame;
 	private long lastInteraction;
 	private final Map3DView view3d = new Map3DView();
+	private int biomeCellX = Integer.MIN_VALUE;
+	private int biomeCellZ;
+	private long biomeTime;
+	private Component biomeName;
 	private Button toggle3d;
 
 	public WorldMapScreen() {
@@ -198,13 +204,48 @@ public class WorldMapScreen extends Screen {
 				width / 2, 4, LunaColors.MOON);
 		graphics.fill(0, height - 28, width, height, 0xCC110D28);
 		double[] under = fromScreen(mouseX, mouseY);
+		Component biome = null;
 		if (under != null) {
-			String coords = "X " + (int) Math.floor(under[0]) + "  Z " + (int) Math.floor(under[1]);
+			int bx = (int) Math.floor(under[0]);
+			int bz = (int) Math.floor(under[1]);
+			String coords = "X " + bx + "  Z " + bz;
 			graphics.text(font, coords, width - font.width(coords) - 6, 4, LunaColors.LAVENDER);
+			biome = biomeAt(bx, bz);
+		}
+		int hintWidth = width - 8;
+		if (biome != null) {
+			// Biom unter dem Mauszeiger, rechts unter den Koordinaten (wie bei Xaero)
+			int biomeWidth = font.width(biome);
+			graphics.fill(width - biomeWidth - 9, 18, width - 3, 30, 0x99110D28);
+			graphics.text(font, biome, width - biomeWidth - 6, 20, LunaColors.MOON);
+			hintWidth -= biomeWidth + 14;
 		}
 		String hint = Component.translatable(in3d() ? "lunamap.worldmap.hint_3d" : "lunamap.worldmap.hint").getString();
-		graphics.text(font, font.plainSubstrByWidth(hint, width - 8), 4, 20, 0xAAA896E8);
+		graphics.text(font, font.plainSubstrByWidth(hint, Math.max(0, hintWidth)), 4, 20, 0xAAA896E8);
 		super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+	}
+
+	/**
+	 * Biom an einer Stelle: aus der gespeicherten Karte, sonst (geladene Chunks) direkt aus der Welt. Merkt sich das
+	 * Ergebnis pro 4x4-Feld kurz, damit nicht in jedem Bild gesucht wird.
+	 */
+	private Component biomeAt(int x, int z) {
+		long now = System.currentTimeMillis();
+		if (x >> 2 == biomeCellX && z >> 2 == biomeCellZ && now - biomeTime < 500) {
+			return biomeName;
+		}
+		MapStore store = MapSession.viewStore();
+		String key = store == null ? null : store.biome(x, z);
+		if (key == null && minecraft.level != null && ChunkScanner.loadedChunk(minecraft.level, x >> 4, z >> 4) != null) {
+			int h = store == null ? MapRegion.NO_HEIGHT : store.height(x, z);
+			int y = h != MapRegion.NO_HEIGHT ? h : minecraft.player != null ? minecraft.player.getBlockY() : 64;
+			key = Biomes.at(minecraft.level, x, y, z);
+		}
+		biomeCellX = x >> 2;
+		biomeCellZ = z >> 2;
+		biomeTime = now;
+		biomeName = Biomes.name(key);
+		return biomeName;
 	}
 
 	private void drawRegions(GuiGraphicsExtractor graphics, MapStore store) {

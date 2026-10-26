@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import luna.map.LunaColors;
 import luna.map.LunaConfig;
 import luna.map.LunaMap;
+import luna.map.data.Biomes;
 import luna.map.data.MapSession;
 import luna.map.data.MapStore;
 import luna.map.data.Waypoint;
@@ -38,13 +39,18 @@ public final class MinimapHud implements HudElement {
 	private MinimapHud() {
 	}
 
+	/** Platz fuer die Zeilen unter der Karte (Koordinaten, Biom). */
+	static int textBelow(LunaConfig config) {
+		return Math.max(12, ((config.coordinates ? 1 : 0) + (config.biome ? 1 : 0)) * 10 + 2);
+	}
+
 	/** Linke obere Ecke der Karte (ohne Rahmen) fuer die aktuelle Fenstergroesse. */
 	static int[] position(Minecraft mc, LunaConfig config, LocalPlayer player) {
 		int size = config.mapSize;
 		int width = mc.getWindow().getGuiScaledWidth();
 		int height = mc.getWindow().getGuiScaledHeight();
 		int x = MARGIN + (int) Math.round(config.posX * Math.max(0, width - size - 2 * MARGIN));
-		int y = MARGIN + (int) Math.round(config.posY * Math.max(0, height - size - 2 * MARGIN - 12));
+		int y = MARGIN + (int) Math.round(config.posY * Math.max(0, height - size - 2 * MARGIN - textBelow(config)));
 		// oben rechts zeichnet Minecraft die Effekt-Symbole: Platz lassen
 		if (player != null && config.posY < 0.05 && config.posX > 0.6) {
 			y += effectRows(player) * 26;
@@ -169,9 +175,21 @@ public final class MinimapHud implements HudElement {
 			graphics.text(mc.font, "⛏", x0 + 2, y0 + 2, LunaColors.LAVENDER);
 		}
 
+		int textY = y0 + size + 5;
 		if (config.coordinates) {
 			String coords = px + ", " + player.getBlockY() + ", " + pz;
-			graphics.centeredText(mc.font, coords, x0 + size / 2, y0 + size + 5, LunaColors.WHITE);
+			graphics.centeredText(mc.font, coords, x0 + size / 2, textY, LunaColors.WHITE);
+			textY += 10;
+		}
+		if (config.biome && mc.level != null) {
+			Component biome = Biomes.name(Biomes.at(mc.level, px, player.getBlockY(), pz));
+			if (biome != null) {
+				// lange Namen nicht ueber den Bildschirmrand hinaus schieben
+				int halfText = mc.font.width(biome) / 2;
+				int screenW = mc.getWindow().getGuiScaledWidth();
+				int center = Math.max(halfText + 2, Math.min(screenW - halfText - 2, x0 + size / 2));
+				graphics.centeredText(mc.font, biome, center, textY, LunaColors.LAVENDER);
+			}
 		}
 	}
 
