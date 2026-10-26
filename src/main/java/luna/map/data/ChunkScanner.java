@@ -117,6 +117,7 @@ public final class ChunkScanner {
 		int minZ = chunkPos.getMinBlockZ();
 		LevelChunk north = loadedChunk(level, chunkPos.x(), chunkPos.z() - 1);
 		boolean changed = false;
+		int[] surface = new int[16 * 16];
 
 		for (int lx = 0; lx < 16; lx++) {
 			int northY = north != null
@@ -126,6 +127,7 @@ public final class ChunkScanner {
 				int x = minX + lx;
 				int z = minZ + lz;
 				int y = surfaceY(level, chunk, x, z, cave, caveTop);
+				surface[lx * 16 + lz] = y;
 				int color = y == Integer.MIN_VALUE ? 0 : color(level, chunk, x, y, z, northY == Integer.MIN_VALUE ? y : northY);
 				if (store.color(x, z) != color || color != 0 && store.height(x, z) != y) {
 					store.set(x, z, color, y);
@@ -136,6 +138,15 @@ public final class ChunkScanner {
 		}
 		if (changed) {
 			store.version++;
+		}
+		// Biom je 4x4-Feld, aus der Mitte des Felds an der Oberflaeche (im Hoehlenmodus am Hoehlenboden)
+		for (int lx = 2; lx < 16; lx += 4) {
+			for (int lz = 2; lz < 16; lz += 4) {
+				int y = surface[lx * 16 + lz];
+				if (y != Integer.MIN_VALUE) {
+					store.setBiome(minX + lx, minZ + lz, Biomes.id(level.getBiome(pos.set(minX + lx, y, minZ + lz))));
+				}
+			}
 		}
 	}
 

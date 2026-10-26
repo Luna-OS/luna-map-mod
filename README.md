@@ -12,6 +12,7 @@ Läuft **allein**, ohne Xaero (und ohne sonstige Karten-Mods).
 | **Minimap** | Norden oben, Pfeil dreht sich mit, Koordinaten; per **Drag & Drop** verschieben und in der Größe ändern (Einstellungen → *Minimap verschieben…*) |
 | **Höhlen** | unter der Erde schaltet die Karte automatisch auf die Höhlenansicht um (pro 16er-Höhenband gespeichert) |
 | **Minimap** | dreht sich mit deiner Blickrichtung (vorne ist oben), Himmelsrichtungen N/O/S/W am Rand; in den Einstellungen abschaltbar |
+| **Biom** | wie bei Xaero: unter der Minimap steht das Biom, in dem du gerade bist; auf der Weltkarte (2D und 3D) rechts oben das Biom unter dem Mauszeiger. Biome werden beim Erkunden mitgespeichert und beim Xaero-Import übernommen. Einstellungen → *Infos*: Koordinaten + Biom, nur eins davon oder aus |
 | **Radar** (`Tab`) | Mit `Tab` an/aus. Minimap und Weltkarte: Mobs als **Kopf-Symbol wie bei Xaero** (aus dem Modell gezeichnet, mit Schnauze, Ohren, Hörnern; Mobs ohne Kopf wie Schleim oder Ghast ganz von vorne), Items = rote Raute, andere Spieler = ihr Skin-Kopf (auf der Weltkarte mit Name); weit über/unter dir = blasser |
 | **Weltkarte** (`J`) | ziehen = verschieben, Mausrad = zoomen, Rechtsklick = Wegpunkt; merkt sich alles, was du erkundet hast (pro Welt/Server und Dimension) |
 | **Wegpunkte** (`B`) | Name, Farbe (Palette oder eigener Hex-Wert wie `#FF66AA`), Koordinaten; in der Welt, auf Minimap und Weltkarte. In der Welt als kleines Schild mit den ersten zwei Buchstaben – Name und Entfernung erscheinen, wenn du draufschaust. In der Liste mit ●/○ einzeln ausblenden |
@@ -42,8 +43,8 @@ Auf dem Server (z. B. ZweersSMP) einloggen → `J` → *Einstellungen* → **Xae
 - Liest Xaeros Server-Karten (`xaero/world-map/Multiplayer_…/…/mw$default/*.zip`, Format bis Xaero's World Map 1.47)
   und die Wegpunkte (`xaero/minimap/…/dim%…/*.txt`), alle Dimensionen.
 - Läuft im Hintergrund, schon erkundete Luna-Daten werden nicht überschrieben, doppelte Wegpunkte übersprungen.
-- Die Höhen kommen mit, damit Xaeros Karten auch in der 3D-Ansicht Berge und Täler haben. Schon früher importiert?
-  Einfach nochmal importieren – dann werden nur die fehlenden Höhen nachgetragen.
+- Höhen und Biome kommen mit, damit Xaeros Karten auch in der 3D-Ansicht Berge und Täler haben und die Weltkarte das
+  Biom kennt. Schon früher importiert? Einfach nochmal importieren – dann werden nur fehlende Höhen und Biome nachgetragen.
 - Im Einzelspieler speichert Xaero keine eigenen Kartendateien – dort gibt es nur die Wegpunkte zu übernehmen.
 
 ## BlueMap (immer aktuelle Karte)

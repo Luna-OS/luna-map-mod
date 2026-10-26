@@ -21,8 +21,8 @@ import luna.map.LunaMap;
 /** Alle Kartenregionen einer Dimension einer Welt, mit Speicherung auf der Platte. */
 public final class MapStore {
 	private static final int MAGIC = 0x4C554E41; // "LUNA"
-	/** 1 = nur Farben, 2 = Farben + Hoehen. */
-	private static final int VERSION = 2;
+	/** 1 = nur Farben, 2 = Farben + Hoehen, 3 = dazu Biome. */
+	private static final int VERSION = 3;
 	private static final int MAX_TEXTURES = 160;
 
 	private final Path dir;
@@ -117,6 +117,17 @@ public final class MapStore {
 		region.setHeight(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), y);
 	}
 
+	/** Biom-Name ("minecraft:plains") an einer Stelle, oder null wenn unbekannt. */
+	public String biome(int blockX, int blockZ) {
+		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, false);
+		return region == null ? null : Biomes.key(region.biome(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1)));
+	}
+
+	void setBiome(int blockX, int blockZ, short id) {
+		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, true);
+		region.setBiome(blockX & (MapRegion.SIZE - 1), blockZ & (MapRegion.SIZE - 1), id);
+	}
+
 	/** Hoehe an einer Stelle oder MapRegion.NO_HEIGHT. */
 	public int height(int blockX, int blockZ) {
 		MapRegion region = region(blockX >> MapRegion.SHIFT, blockZ >> MapRegion.SHIFT, false);
@@ -134,6 +145,12 @@ public final class MapStore {
 	/** Wie oben, mit Hoehen (gleiche Anordnung wie colors, MapRegion.NO_HEIGHT = unbekannt). */
 	public void merge(int blockX0, int blockZ0, int width, int height, int[] colors, short[] heights, boolean overwrite,
 			BlockFilter keep) {
+		merge(blockX0, blockZ0, width, height, colors, heights, null, overwrite, keep);
+	}
+
+	/** Wie oben, mit Biomen pro Block (Nummern aus Biomes, UNKNOWN = unbekannt; gespeichert wird je 4x4-Feld). */
+	public void merge(int blockX0, int blockZ0, int width, int height, int[] colors, short[] heights, short[] biomes,
+			boolean overwrite, BlockFilter keep) {
 		boolean changed = false;
 		for (int dz = 0; dz < height; dz++) {
 			for (int dx = 0; dx < width; dx++) {
@@ -146,13 +163,20 @@ public final class MapStore {
 				if (keep != null && keep.test(x, z)) {
 					continue;
 				}
+				short biome = biomes == null ? Biomes.UNKNOWN : biomes[dz * width + dx];
 				if (!overwrite && color(x, z) != 0) {
-					// schon bekannt: hoechstens eine fehlende Hoehe nachtragen (aeltere Importe hatten keine, fuer 3D)
+					// schon bekannt: hoechstens fehlende Hoehe und Biom nachtragen (aeltere Importe hatten keine)
 					if (heights != null && heights[dz * width + dx] != MapRegion.NO_HEIGHT && height(x, z) == MapRegion.NO_HEIGHT) {
 						setHeight(x, z, heights[dz * width + dx]);
 						changed = true;
 					}
+					if (biome != Biomes.UNKNOWN && biome(x, z) == null) {
+						setBiome(x, z, biome);
+					}
 					continue;
+				}
+				if (biome != Biomes.UNKNOWN) {
+					setBiome(x, z, biome);
 				}
 				if (heights != null && heights[dz * width + dx] != MapRegion.NO_HEIGHT) {
 					set(x, z, color, heights[dz * width + dx]);
@@ -225,17 +249,17 @@ public final class MapStore {
 
 	private MapRegion load(int rx, int rz) {
 		MapRegion region = new MapRegion(rx, rz);
-		return read(file(rx, rz), region.colors, region.heights) ? region : null;
+		return read(file(rx, rz), region.colors, region.heights, region.biomes) ? region : null;
 	}
 
 	/** Farben einer Regionsdatei, oder null. Darf auch aus Hintergrund-Threads aufgerufen werden. */
 	static int[] readColors(Path file) {
 		int[] colors = new int[MapRegion.SIZE * MapRegion.SIZE];
-		return read(file, colors, null) ? colors : null;
+		return read(file, colors, null, null) ? colors : null;
 	}
 
-	/** Liest Farben und (ab Version 2) Hoehen; heights darf null sein. */
-	private static boolean read(Path file, int[] colors, short[] heights) {
+	/** Liest Farben, (ab Version 2) Hoehen und (ab Version 3) Biome; heights und biomes duerfen null sein. */
+	private static boolean read(Path file, int[] colors, short[] heights, short[] biomes) {
 		if (!Files.exists(file)) {
 			return false;
 		}
@@ -250,6 +274,17 @@ public final class MapStore {
 			if (version >= 2 && heights != null) {
 				for (int i = 0; i < heights.length; i++) {
 					heights[i] = in.readShort();
+				}
+				if (version >= 3 && biomes != null) {
+					// eigene Namensliste pro Datei, damit die Nummern nicht von der Reihenfolge im Spiel abhaengen
+					short[] palette = new short[in.readUnsignedShort() + 1];
+					for (int i = 1; i < palette.length; i++) {
+						palette[i] = Biomes.id(in.readUTF());
+					}
+					for (int i = 0; i < biomes.length; i++) {
+						int local = in.readUnsignedShort();
+						biomes[i] = local < palette.length ? palette[local] : Biomes.UNKNOWN;
+					}
 				}
 			}
 			return true;
@@ -314,6 +349,25 @@ public final class MapStore {
 				}
 				for (short h : region.heights) {
 					out.writeShort(h);
+				}
+				Map<Short, Integer> local = new HashMap<>();
+				List<String> names = new ArrayList<>();
+				int[] indices = new int[region.biomes.length];
+				for (int i = 0; i < indices.length; i++) {
+					String name = Biomes.key(region.biomes[i]);
+					if (name != null) {
+						indices[i] = local.computeIfAbsent(region.biomes[i], id -> {
+							names.add(name);
+							return names.size();
+						});
+					}
+				}
+				out.writeShort(names.size());
+				for (String name : names) {
+					out.writeUTF(name);
+				}
+				for (int index : indices) {
+					out.writeShort(index);
 				}
 			}
 			Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);

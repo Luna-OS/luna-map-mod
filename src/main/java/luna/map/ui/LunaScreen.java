@@ -20,6 +20,28 @@ public class LunaScreen extends Screen {
 	private static final int AXO_H = 17;
 	private static final int AXO_SCALE = 2;
 
+	/** Was unter der Minimap steht. */
+	private enum Info {
+		BOTH(true, true), COORDINATES(true, false), BIOME(false, true), OFF(false, false);
+
+		final boolean coordinates;
+		final boolean biome;
+
+		Info(boolean coordinates, boolean biome) {
+			this.coordinates = coordinates;
+			this.biome = biome;
+		}
+
+		static Info of(LunaConfig config) {
+			for (Info info : values()) {
+				if (info.coordinates == config.coordinates && info.biome == config.biome) {
+					return info;
+				}
+			}
+			return BOTH;
+		}
+	}
+
 	private final Screen parent;
 
 	public LunaScreen(Screen parent) {
@@ -45,8 +67,12 @@ public class LunaScreen extends Screen {
 		addRenderableWidget(CycleButton.builder((LunaConfig.Zoom z) -> Component.translatable("lunamap.zoom." + z.name().toLowerCase()), config.zoom)
 				.withValues(LunaConfig.Zoom.values())
 				.create(left, top + 22, 150, 20, Component.translatable("lunamap.option.zoom"), (b, v) -> config.zoom = v));
-		addRenderableWidget(CycleButton.onOffBuilder(config.coordinates)
-				.create(right, top + 22, 150, 20, Component.translatable("lunamap.option.coordinates"), (b, v) -> config.coordinates = v));
+		addRenderableWidget(CycleButton.builder((Info i) -> Component.translatable("lunamap.info." + i.name().toLowerCase()), Info.of(config))
+				.withValues(Info.values())
+				.create(right, top + 22, 150, 20, Component.translatable("lunamap.option.info"), (b, v) -> {
+					config.coordinates = v.coordinates;
+					config.biome = v.biome;
+				}));
 		addRenderableWidget(CycleButton.onOffBuilder(config.caveMode)
 				.create(left, top + 44, 150, 20, Component.translatable("lunamap.option.caves"), (b, v) -> config.caveMode = v));
 		addRenderableWidget(CycleButton.onOffBuilder(config.radar)

@@ -113,7 +113,7 @@ public class MinimapEditScreen extends Screen {
 	private void moveTo(LunaConfig config, double x, double y) {
 		int size = config.mapSize;
 		double freeX = Math.max(1, width - size - 2 * MinimapHud.MARGIN);
-		double freeY = Math.max(1, height - size - 2 * MinimapHud.MARGIN - 12);
+		double freeY = Math.max(1, height - size - 2 * MinimapHud.MARGIN - MinimapHud.textBelow(config));
 		config.posX = Math.max(0, Math.min(1, (x - MinimapHud.MARGIN) / freeX));
 		config.posY = Math.max(0, Math.min(1, (y - MinimapHud.MARGIN) / freeY));
 	}

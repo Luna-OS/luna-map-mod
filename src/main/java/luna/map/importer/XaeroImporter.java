@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 import luna.map.LunaColors;
 import luna.map.LunaMap;
+import luna.map.data.Biomes;
 import luna.map.data.MapRegion;
 import luna.map.data.MapSession;
 import luna.map.data.MapStore;
@@ -168,12 +169,13 @@ public final class XaeroImporter {
 				XaeroRegionReader.Region region = XaeroRegionReader.read(file);
 				int[] argb = toColors(region, colors, rx, rz);
 				short[] heights = toHeights(region);
+				short[] biomeIds = toBiomes(region);
 				int x0 = rx * XaeroRegionReader.SIZE;
 				int z0 = rz * XaeroRegionReader.SIZE;
 				while (MapSession.pendingMainThreadTasks() > 32) {
 					Thread.sleep(50);
 				}
-				MapSession.runOnMainThread(() -> merge(world, dimension, x0, z0, argb, heights, offline));
+				MapSession.runOnMainThread(() -> merge(world, dimension, x0, z0, argb, heights, biomeIds, offline));
 			} catch (IOException | RuntimeException e) {
 				LunaMap.LOGGER.warn("Xaero-Region {} uebersprungen: {}", file, e.toString());
 			} catch (InterruptedException e) {
@@ -195,7 +197,7 @@ public final class XaeroImporter {
 	 * Auf dem Haupt-Thread. Teile, die die offene Karte gerade im Speicher hat, gehen dorthin,
 	 * alles andere direkt in die Dateien - so bleibt der Speicherbedarf auch bei riesigen Karten klein.
 	 */
-	private static void merge(String world, String dimension, int x0, int z0, int[] argb, short[] heights,
+	private static void merge(String world, String dimension, int x0, int z0, int[] argb, short[] heights, short[] biomes,
 			Map<String, MapStore> offline) {
 		if (!world.equals(MapSession.world())) {
 			return;
@@ -206,16 +208,18 @@ public final class XaeroImporter {
 		MapStore files = offline.computeIfAbsent(dimension, d -> MapStore.open(MapSession.dimensionFolder(d), MapSession.textureOwner(d)));
 		int[] piece = new int[part * part];
 		short[] pieceHeights = new short[part * part];
+		short[] pieceBiomes = new short[part * part];
 		for (int pz = 0; pz < size / part; pz++) {
 			for (int px = 0; px < size / part; px++) {
 				for (int z = 0; z < part; z++) {
 					System.arraycopy(argb, (pz * part + z) * size + px * part, piece, z * part, part);
 					System.arraycopy(heights, (pz * part + z) * size + px * part, pieceHeights, z * part, part);
+					System.arraycopy(biomes, (pz * part + z) * size + px * part, pieceBiomes, z * part, part);
 				}
 				int bx = x0 + px * part;
 				int bz = z0 + pz * part;
 				boolean inMemory = live != null && live.isLoaded(bx >> MapRegion.SHIFT, bz >> MapRegion.SHIFT);
-				(inMemory ? live : files).merge(bx, bz, part, part, piece, pieceHeights, false, null);
+				(inMemory ? live : files).merge(bx, bz, part, part, piece, pieceHeights, pieceBiomes, false, null);
 				if (live != null && !inMemory) {
 					live.forget(bx >> MapRegion.SHIFT, bz >> MapRegion.SHIFT);
 				}
@@ -253,6 +257,15 @@ public final class XaeroImporter {
 			}
 		}
 		return heights;
+	}
+
+	/** Biom pro Block, wie Xaero es gespeichert hat ("minecraft:plains"), als Nummer aus Biomes. */
+	private static short[] toBiomes(XaeroRegionReader.Region region) {
+		short[] biomes = new short[region.biomes.length];
+		for (int i = 0; i < biomes.length; i++) {
+			biomes[i] = region.blocks[i] == null ? Biomes.UNKNOWN : Biomes.id(region.biomes[i]);
+		}
+		return biomes;
 	}
 
 	/** Xaero legt Karten in Unterordnern wie "mw$default" ab, im Einzelspieler auch direkt. */
